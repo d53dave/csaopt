@@ -1,14 +1,18 @@
 #include <yaml-cpp/yaml.h>
 #include <istream>
+#include <chrono>
 
 class Config // Standard way of defining the class
 {
 public:
 	Config();
 	~Config();
-	void operator>> (const YAML::Node& node, Config& config);
+	Config& operator=(const Config&);
+	Config(const Config&);
+	void parsePath(std::string path);
 	void addInstance(RemoteInstance ri);
 	void removeInstance(int i);
+	void showInstances();
 private:
 	size_t someField;
 	std::string awsAccessKeyId;
@@ -19,8 +23,13 @@ private:
 class RemoteInstance {
 public:
 	RemoteInstance();
-	RemoteInstance(const std::string& ip, int port);
+	RemoteInstance(const YAML::Node& node);
+	RemoteInstance(const RemoteInstance&);
 	~RemoteInstance();
+
+	enum InstanceType {MSGQUEUE, GPUWORKER};
+
+	RemoteInstance& operator=(const RemoteInstance&);
 	const std::string& getIp() const {
 		return (ip);
 	}
@@ -44,10 +53,6 @@ public:
 	void setId(long id) {
 		this->id = id;
 	}
-
-	enum InstanceType {
-
-	};
 private:
 	long id;
 	std::string ip;
@@ -61,11 +66,25 @@ Config::Config(){
 	remoteInstances.clear();
 }
 
-Config::operator>> (const YAML::Node& node, Config& config){
-
+void parsePath(std::string path){
+	try {
+	    std::ifstream fin(path);
+	    YAML::Parser parser(fin);
+	    YAML::Node doc;
+	    parser.GetNextDocument(doc);
+	    // do stuff
+	} catch(YAML::ParserException& e) {
+	    std::cout << e.what() << "\n";
+	}
 }
 
 Config::addInstance(RemoteInstance & ri){
 	ri.setId(this->remoteInstances.size());
 	this->remoteInstances.push_back(ri);
+}
+
+Config::showInstances(){
+	for_each( this->remoteInstances.begin(), this->remoteInstances.end(), [] (RemoteInstance inst)
+			{std::cout << inst.getId() <<"= "<<inst.getIp()<<":"<<inst.getPort();}
+	);
 }

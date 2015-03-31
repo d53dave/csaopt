@@ -35,9 +35,9 @@ int main(int argc, char** argv) {
 			    YAML::Node doc;
 			    parser.GetNextDocument(doc);
 			    for(unsigned i=0;i<doc.size();i++) {
-			          Monster monster;
-			          doc[i] >> monster;
-			          std::cout << monster.name << "\n";
+//			          Monster monster;
+//			          doc[i] >> monster;
+//			          std::cout << monster.name << "\n";
 			       }
 			} catch(YAML::ParserException& e) {
 			    std::cout << e.what() << "\n";
