@@ -50,3 +50,9 @@
 
 # sbteclipse plugin
 .target
+
+# Generated docs
+doc/
+
+# Build dir
+build/
