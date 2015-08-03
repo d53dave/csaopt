@@ -6,4 +6,4 @@
 	url = https://github.com/d53dave/cgopt-zmq.git
 [submodule "protobuf"]
 	path = protobuf
-	url = git@github.com:d53dave/cgopt-protobuf.git
+	url = https://github.com/d53dave/cgopt-protobuf.git
