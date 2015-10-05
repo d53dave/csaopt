@@ -7,8 +7,15 @@
 #include <thread>
 #include <string>
 #include "config.hpp"
+#include "AWSTools.h"
 
 int main(int argc, char** argv) {
+
+//    CGOpt::OptimizationJob job;
+//    job.optimization = std::make_shared<UserDefinedOptimization>();
+
+	CGOpt::AWSTools awsTools("", "");
+
 	try {
 		TCLAP::CmdLine cmd("CGOPT!!", ' ', "0.1");
 
@@ -29,19 +36,17 @@ int main(int argc, char** argv) {
 		if (verboseOutput) {
 			std::cout << "VERBOSE Startup!!! This is very verbose." << std::endl;
 			std::cout << "Loading config file from "<< configPath << std::endl;
-			try {
-			    std::ifstream fin("test.yaml");
-			    YAML::Parser parser(fin);
-			    YAML::Node doc;
-			    parser.GetNextDocument(doc);
-			    for(unsigned i=0;i<doc.size();i++) {
-//			          Monster monster;
-//			          doc[i] >> monster;
-//			          std::cout << monster.name << "\n";
-			       }
-			} catch(YAML::ParserException& e) {
-			    std::cout << e.what() << "\n";
-			}
+//			try {
+//			    std::ifstream fin("test.yaml");
+//			    parser.GetNextDocument(doc);
+//			    for(unsigned i=0;i<doc.size();i++) {
+////			          Monster monster;
+////			          doc[i] >> monster;
+////			          std::cout << monster.name << "\n";
+//			       }
+//			} catch(YAML::ParserException& e) {
+//			    std::cout << e.what() << "\n";
+//			}
 		} else {
 			std::cout << "Startup!" << std::endl;
 		}
