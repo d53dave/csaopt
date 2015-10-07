@@ -2,23 +2,15 @@
 // Created by David on 01.05.2015.
 //
 
-#include <assert.h>
+#include <algorithm>
 #include <fstream>
 #include <vector>
 #include <sstream>
 #include <set>
 #include "AWSTools.h"
 
-#include <iostream>
-#include <unistd.h>
-
-
-
 void sleepcp(int seconds){
-    std::cout << "Going to sleep...";
-    std::cout.flush();
     usleep(seconds * 1000 * 1000); //microsecs
-    std::cout << " woke up"<<std::endl;
 }
 
 namespace CGOpt {
@@ -26,12 +18,29 @@ namespace CGOpt {
         return runCmd(ec2BaseCmd + cmd);
     }
 
-    void AWSTools::startGPUInstances() {
-        std::set<std::string> instanceIds;
-        size_t instancesToSpinUp = instanceCount - awsInstances.size();
-        assert(instancesToSpinUp >= 0 && instancesToSpinUp <= 5);
+    std::string AWSTools::runEC2Cmd(std::string cmd, int &retCode) const {
+        return runCmd(ec2BaseCmd + cmd, retCode);
+    }
 
-        std::cout << "Spinning up " << instancesToSpinUp << " instances" << std::endl;
+
+
+    void AWSTools::getGPUInstances() {
+        std::vector<AWSInstance> availableGPUInstances = this->getAvailableGPUInstances();
+
+        std::vector<AWSInstance> stoppedInstances;
+        std::copy_if(availableGPUInstances.begin(), availableGPUInstances.end(), std::back_inserter(stoppedInstances),
+                     [](AWSInstance const & x) { return x.state == AWSTools::stopped
+                                                        || x.state == AWSTools::stopping; });
+
+        std::vector<AWSInstance> runningInstances;
+        std::copy_if(availableGPUInstances.begin(), availableGPUInstances.end(), std::back_inserter(runningInstances),
+                     [](AWSInstance const & x) { return x.state == AWSTools::running; });
+
+        std::set<std::string> instanceIds;
+        size_t instancesToSpinUp = instanceCount - availableGPUInstances.size();
+        assert(instancesToSpinUp >= 0 && instancesToSpinUp <= 20);
+
+        _logger->info("Spinning up {} instances", instancesToSpinUp);
 
         if (instancesToSpinUp > 0) {
             picojson::value v;
@@ -45,11 +54,11 @@ namespace CGOpt {
 
                 for (picojson::array::iterator iter = instanceList.begin(); iter != instanceList.end(); ++iter) {
                     std::string instanceId{(*iter).get("InstanceId").get<std::string>()};
-                    std::cout << "Inserting instance id " + instanceId << std::endl;
+                    _logger->info("Inserting instance id " + instanceId);
                     instanceIds.insert(instanceId);
                 }
             } else {
-                std::cerr << err << std::endl;
+                _logger->error(err);
             }
 
             sleepcp(5);
@@ -62,10 +71,10 @@ namespace CGOpt {
                 std::string instancesString = instancesStringStream.str();
                 instancesString.erase(instancesString.length()-2); //remove last ', '
 
-                std::cout << "Waiting for instances [" + instancesString + "] to become available" << std::endl;
-                getAvailableInstances();
-                //the following code is inefficient but the lists are small, so who gives?
-                for (auto &i : awsInstances) {
+                _logger->info("Waiting for instances [{}] to become available", instancesString);
+                getAvailableGPUInstances();
+                //the following part is inefficient but the lists are small, so who gives?
+                for (auto &i : availableGPUInstances) {
                     if (i.state == AWSInstanceState::running) {
                         auto a = instanceIds.find(i.id);
                         if (a != instanceIds.end()) {
@@ -76,16 +85,26 @@ namespace CGOpt {
             }
 
         } else {
-            std::cerr << "Tried to start less than 1 instance";
+            _logger->error( "Tried to start less than 1 instance");
         }
     }
 
-
-    void AWSTools::getAvailableInstances() {
-        std::string cmd = "describe-instances --filters \"Name=instance.group-name,Values=" + secGroupName + "\"";
+    std::string AWSTools::getInstancesStringByType(const std::string type) const {
+        std::string cmd = "describe-instances --filters  "
+                                  "\"Name=instance-type,Values="+ type +"\" "
+                                  "\"Name=instance.group-name,Values=" + secGroupName + "\" ";
         std::string result = runEC2Cmd(cmd);
 
-        awsInstances.clear();
+        return result;
+    }
+
+
+    std::vector<AWSInstance> AWSTools::getAvailableGPUInstances() {
+        std::string result = this->getInstancesStringByType(G2_2X_LARGE + "," + G2_8X_LARGE);
+
+        _logger->debug("AWSTools::getAvailableGPUInstances Result: {}", result);
+
+        std::vector<AWSInstance> availableGPUInstances;
 
         picojson::value v;
         std::string err = picojson::parse(v, result);
@@ -96,43 +115,47 @@ namespace CGOpt {
             if (reservationList.size() > 0) {
                 picojson::array instanceList = reservationList[0].get("Instances").get<picojson::array>();
                 for (picojson::array::iterator iter = instanceList.begin(); iter != instanceList.end(); ++iter) {
-                    double code = (*iter).get("State").get("Code").get<double>();
+                    int code = (*iter).get("State").get("Code").get<int64_t>();
+                    AWSInstanceState state = static_cast<AWSInstanceState>(code);
                     std::string instanceId{(*iter).get("InstanceId").get<std::string>()};
-                    std::string publicDnsName{(*iter).get("PublicDnsName").get<std::string>()};
-                    std::string publicIp{(*iter).get("PublicIpAddress").get<std::string>()};
-                    AWSInstanceState state = static_cast<AWSInstanceState>(static_cast<int>(code));
-                    std::cout << "Processed Instance " << instanceId << " " << publicIp << " " << state << std::endl;
-                    awsInstances.push_back({instanceId, publicIp, publicDnsName, state});
+                    std::string publicDnsName;
+                    std::string publicIp;
+                    if(state == AWSInstanceState::running){
+                        publicDnsName = (*iter).get("PublicDnsName").get<std::string>();
+                        publicIp = (*iter).get("PublicIpAddress").get<std::string>();
+                    }
+
+                    _logger->info("Processed Instance {} {} {} {}", instanceId, publicDnsName, publicIp, state);
+                    availableGPUInstances.push_back({instanceId, publicIp, publicDnsName, state});
                 }
             }
         } else {
-            std::cerr << err << std::endl;
+            _logger->error( err);
         }
     }
 
     void AWSTools::createSecGroup() {
-        std::cout << "Creating Sec Group" << std::endl;
-        std::string createSecGroupCommand{
-                "create-security-group --group-name " + secGroupName + " --description \"security group for cgopt\""};
-        std::string result = runEC2Cmd(createSecGroupCommand);
+        _logger->info("Creating Sec Group");
+        std::string result = runEC2Cmd("create-security-group --group-name " +
+                secGroupName + " --description \"security group for cgopt\"");
 
         picojson::value v;
         std::string err = picojson::parse(v, result);
 
-        std::cout << result;
+        _logger->debug(result);
 
         assert(err.empty() && v.get("GroupId").is<std::string>());
 
+        int retCode;
 
-        std::string myIp = runCmd("curl http://checkip.amazonaws.com/");
-        myIp.erase(std::remove(myIp.begin(), myIp.end(), '\n'), myIp.end());
         std::string authorizeGrp{
                 "authorize-security-group-ingress --group-name " + secGroupName + " --protocol tcp --port 22 --cidr " +
                 myIp + "/32"
         };
 
-        std::string authGroupResult = runEC2Cmd(authorizeGrp);
-        std::cout << "Auth result: " << authGroupResult << std::endl;
+        std::string authGroupResult = runEC2Cmd(authorizeGrp, retCode);
+        _logger->debug("Auth result: " + authGroupResult);
+        assert(retCode == 0 && "Security Group authorization failed");
     }
 
 
@@ -149,14 +172,13 @@ namespace CGOpt {
 
 
     void AWSTools::createAndStoreKeypair() {
-        std::cout << "Getting new keys..." << std::endl;
+        _logger->info("Getting new keys...");
         std::string cmd = " create-key-pair --key-name " + keyName +
                           " --query 'KeyMaterial' --output text > " + keyFileName +
                           " && mkdir -p " + keyPath + " && mv " + keyFileName + " " + keyPath;
 
         runEC2Cmd(cmd);
-        std::cout << "Asserting keys good ..." << std::endl;
-        assert(keyPresentLocally());
+        assert(keyPresentLocally() && "Key not found");
     }
 
     std::vector<std::string> AWSTools::getSecurityGroupData() const {
@@ -171,45 +193,47 @@ namespace CGOpt {
                 vec.push_back((*iter).get("GroupName").get<std::string>());
             }
         } else {
-            std::cerr << err << std::endl;
+           _logger->error( err);
         }
         return vec;
     }
 
-    std::vector<AWSTools::AWSInstance> AWSTools::getInstances() {
-        return awsInstances;
+    std::vector<AWSTools::AWSInstance> AWSTools::getInstances() const {
+        return workingSet;
     }
 
     std::vector<std::string> AWSTools::getInstanceAddresses() const{
         std::vector<std::string> addresses;
-        for (auto &i : awsInstances) {
+        for (auto &i : workingSet) {
             addresses.push_back(i.publicDNSname);
         }
         return addresses;
     }
 
     void AWSTools::runSetup() {
-        std::cout << "Running setup!" << std::endl;
+        _logger->info("Running AWS Setup");
         auto secData = getSecurityGroupData();
 
         for (auto &sec : secData) {
-            std::cout << "Secdata: " << sec << std::endl;
+            _logger->debug("Secdata: " + sec);
         }
 
         if (secData.empty() || !std::any_of(secData.begin(), secData.end(),
                                             [this](std::string &grp) { return grp == secGroupName; })) {
             createSecGroup();
         } else {
-            std::cout << "Secgroup found!" << std::endl;
+            _logger->info("Secgroup found!");
         }
 
-        if (awsKeypairExists()) {
-            std::cout << "We have remote keys..." << std::endl;
+        if (remoteKeypairExists()) {
+            _logger->info("Remote key found.");
             if (!keyPresentLocally()) { //generate new keys, local key is missing
-                std::cout << "But we don't have local keys..." << std::endl;
+                _logger->warn( "But we don't have local keys...");
                 removeRemoteKeypair();
                 createAndStoreKeypair();
-            };
+            } else {
+                _logger->info("Local key found.");
+            }
         } else {
             if (keyPresentLocally()) {
                 runCmd("rm -f " + keyPath + keyFileName);
@@ -219,17 +243,59 @@ namespace CGOpt {
             createAndStoreKeypair();
         }
 
-        getAvailableInstances();
+        getAvailableGPUInstances();
+        if(useSeparateServerForMsgQueue){
+            this->messageQueue = getMessageQueue();
+        }
+
+    }
+
+
+    AWSInstance AWSTools::getMessageQueue() {
+        std::string messageQueueServerType = messageQueueAWSServerType.empty() ? this->T2_SMALL
+                                                                               : messageQueueServerType;
+
+        std::string result = this->getInstancesStringByType(messageQueueServerType);
+
+        picojson::value v;
+        std::string err = picojson::parse(v, result);
+
+        std::vector<AWSInstance> returnedInstances;
+
+        if (err.empty() && v.get("Reservations").is<picojson::array>()) {
+            picojson::array reservationList = v.get("Reservations").get<picojson::array>();
+            if (reservationList.size() > 0) {
+                picojson::array instanceList = reservationList[0].get("Instances").get<picojson::array>();
+                for (picojson::array::iterator iter = instanceList.begin(); iter != instanceList.end(); ++iter) {
+                    int code = (*iter).get("State").get("Code").get<int64_t>();
+                    AWSInstanceState state = static_cast<AWSInstanceState>(code);
+                    if (state == stopped || state == stopping || state == running) {
+                        std::string instanceId{(*iter).get("InstanceId").get<std::string>()};
+                        std::string publicDnsName;
+                        std::string publicIp;
+                        if (state == AWSInstanceState::running) {
+                            publicDnsName = (*iter).get("PublicDnsName").get<std::string>();
+                            publicIp = (*iter).get("PublicIpAddress").get<std::string>();
+                        }
+
+                        _logger->info("Processed Instance {} {} {} {}", instanceId, publicDnsName, publicIp, state);
+                        returnedInstances.push_back({instanceId, publicIp, publicDnsName, state});
+                    }
+                }
+            }
+        } else {
+            _logger->error(err);
+        }
     }
 
     void AWSTools::removeRemoteKeypair() {
-        std::cout << "Removing the remote key pair" << std::endl;
+        _logger->info("Removing the remote key pair");
         std::string cmd = "delete-key-pair --key-name " + keyName;
         std::string returnVal = runEC2Cmd(cmd);
         assert(returnVal.empty()); //empty when successful
     }
 
-    bool AWSTools::awsKeypairExists() {
+    bool AWSTools::remoteKeypairExists() {
         std::string cmd = "describe-key-pairs";
 
         std::string result = runEC2Cmd(cmd);
@@ -237,7 +303,7 @@ namespace CGOpt {
 
         std::string err = picojson::parse(v, result);
         if (err.empty()) {
-            std::cout << result << std::endl;
+            _logger->debug("Result: "+result);
             picojson::array list = v.get("KeyPairs").get<picojson::array>();
             for (picojson::array::iterator iter = list.begin(); iter != list.end(); ++iter) {
                 if ((*iter).get("KeyName").get<std::string>() == keyName) {
@@ -245,29 +311,64 @@ namespace CGOpt {
                 }
             }
         } else {
-            std::cerr << err << std::endl;
+            _logger->error(err);
         }
         return false;
     }
 
     void AWSTools::shutdownInstances() {
-        if (!awsInstances.empty()) {
+        if(useSeparateServerForMsgQueue){
+            std::ostringstream shutdownCmd;
+            const char * logMsgFmt;
+            if(terminateOnExit){
+                logMsgFmt = "Terminating instances {}";
+                shutdownCmd << "terminate-instances ";
+            } else {
+                logMsgFmt = "Stopping MessageQueue {}";
+                shutdownCmd << "stop-instances ";
+            }
+            shutdownCmd << "--instance-ids " << messageQueue.id;
+            _logger->info(logMsgFmt, messageQueue.id);
+            runEC2Cmd(shutdownCmd.str());
+        }
+
+        if (!workingSet.empty()) {
+
             std::ostringstream shutdownCmd;
             std::ostringstream joinedIds;
 
-            for (auto &i : awsInstances) {
+            const char * logMsgFmt;
+
+            for (auto &i : workingSet) {
                 joinedIds << " " + i.id;
             }
 
             if (terminateOnExit) {
-                shutdownCmd << "terminate-instances --instance-ids";
+                logMsgFmt = "Terminating instances {}";
+                shutdownCmd << "terminate-instances ";
             } else {
-                shutdownCmd << "stop-instances --instance-ids";
+                logMsgFmt = "Stopping instances {}";
+                shutdownCmd << "stop-instances ";
             }
-            shutdownCmd << joinedIds.str();
-            runEC2Cmd(shutdownCmd.str());
-        }
 
+            std::string joinedIdsString = joinedIds.str();
+            shutdownCmd << "--instance-ids" << joinedIdsString;
+
+            _logger->info(logMsgFmt, joinedIdsString);
+            runEC2Cmd(shutdownCmd.str());
+        } else {
+            _logger->info("No instances to shutdown/terminate.");
+        }
         //runEC2Cmd("delete-security-group --group-name "+secGroupName);
+    }
+
+    std::string AWSTools::getLocalIp() const {
+        int retCode;
+        std::string myIp = runCmd("curl http://checkip.amazonaws.com/ 2>/dev/null", retCode);
+        if(retCode > 0){ //try something else
+            myIp = runCmd("wget -qO- http://checkip.amazonaws.com/ 2>/dev/null", retCode);
+        }
+        myIp.erase(std::remove(myIp.begin(), myIp.end(), '\n'), myIp.end());
+        return myIp;
     }
 }

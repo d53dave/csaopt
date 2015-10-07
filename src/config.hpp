@@ -1,21 +1,29 @@
+#pragma once
+
 #include <istream>
 #include <chrono>
 
-class Config // Standard way of defining the class
-{
-public:
-	Config();
-	~Config();
-	Config& operator=(const Config&);
-	Config(const Config&);
-	void parsePath(std::string path);
-	void removeInstance(int i);
-	void showInstances();
-private:
-	size_t someField;
-	std::string awsAccessKeyId;
-	std::string awsAccessKeySecret;
-};
+namespace CGOpt{
+    class Config {
+    public:
+        Config();
+        ~Config();
+        Config& operator=(const Config&);
+        Config(const Config&);
+        Config parsePath(std::string path);
+
+        static bool verboseLogging(){ return true; }
+        static bool fileLogging(){ return strncmp(loggerName(), "dailyLogger", 100) == 0; }
+        static const char *loggerName(){ return loggerNameStr; }
+
+
+        enum logLevel {info, warning, error, critical, debug};
+    private:
+        static bool verbose;
+        static constexpr const char* loggerNameStr = "console";
+    };
+}
+
 
 
 

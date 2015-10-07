@@ -37,7 +37,7 @@ add_executable(AWSToolsTest test/AWSToolsTest.cpp src/AWSTools.h src/AWSTools.cp
 target_link_libraries(AWSToolsTest model)
 add_test(NAME AWSToolsTest COMMAND AwsToolsTest)
 
-file(GLOB TEST_CLASSES "test/TestClasses/*.*")
+file(GLOB TEST_CLASSES "test/TestClasses/UserDefined*.*")
 
 add_executable(OpimizationJobTest test/OptimizationJobTest.cpp src/OptimizationJob.cpp
         src/OptimizationJob.h ${TEST_CLASSES})

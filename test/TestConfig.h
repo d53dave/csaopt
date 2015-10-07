@@ -7,3 +7,5 @@
 #define CATCH_CONFIG_MAIN
 #include <catch/catch.hpp>
 
+#define AWS_TEST_FULL
+
