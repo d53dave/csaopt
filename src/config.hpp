@@ -15,6 +15,7 @@ namespace CGOpt{
         static bool verboseLogging(){ return true; }
         static bool fileLogging(){ return strncmp(loggerName(), "dailyLogger", 100) == 0; }
         static const char *loggerName(){ return loggerNameStr; }
+        static std::string hostFilePath(){ return "./ansible/hosts";}
 
 
         enum logLevel {info, warning, error, critical, debug};

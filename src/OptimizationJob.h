@@ -6,11 +6,10 @@
 
 #include <string>
 #include <memory>
+#include <chrono>
 #include "Optimization.h"
 
 namespace CGOpt {
-
-
 
     class OptimizationJob {
     public:
@@ -19,6 +18,8 @@ namespace CGOpt {
         std::shared_ptr<Target> target;
         std::string getTargetClassFile();
         std::string getOptClassFile();
+
+        std::chrono::milliseconds lastResultTimeStamp;
 
     private:
         std::string demangle(const char* name);

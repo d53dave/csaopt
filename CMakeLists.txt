@@ -21,7 +21,7 @@ set(SOURCE_FILES
         src/CGOptManager.cpp
         src/OptimizationJob.h
         src/OptimizationJob.cpp
-)
+        src/MessageQueueClient.cpp src/MessageQueueClient.h)
 
 
 add_executable(cgopt ${SOURCE_FILES})
@@ -32,6 +32,9 @@ enable_testing()
 
 add_executable(SysToolsTest test/SysToolsTest.cpp src/SysTools.h)
 add_test(NAME SysToolsTest COMMAND SysToolsTest)
+
+add_executable(AnsibleToolsTest test/AnsibleToolsTest.cpp src/AnsibleTools.h src/AnsibleTools.cpp)
+add_test(NAME AnsibleToolsTest COMMAND AnsibleToolsTest)
 
 add_executable(AWSToolsTest test/AWSToolsTest.cpp src/AWSTools.h src/AWSTools.cpp src/SysTools.h)
 target_link_libraries(AWSToolsTest model)

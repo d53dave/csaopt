@@ -7,8 +7,11 @@
 #include <vector>
 #include <string>
 #include "OptimizationJob.h"
-#include "../model/src/Target.h"
-#include "../model/src/Optimization.h"
+#include "Target.h"
+#include "Optimization.h"
+#include "AWSTools.h"
+#include "AnsibleTools.h"
+#include <map>
 
 namespace CGOpt {
 
@@ -22,12 +25,29 @@ namespace CGOpt {
         }
 
         std::string run(OptimizationJob &job);
+        void setAWSTools(std::shared_ptr<AWSTools> _awsTools);
+        void setAnsibleTools(std::shared_ptr<AnsibleTools> _ansibleTools);
         void abort();
         std::vector<Target> getResults(std::string jobId);
+        std::vector<Target> getResultsBlocking(std::string jobId);
+
+        bool newResultsAvailable();
+        bool newResultsAvailable(std::string jobId);
     private:
+        //singleton stuff
         CGOptManager() {};
         CGOptManager(CGOptManager const&)   = delete;
         void operator=(CGOptManager const&) = delete;
+
+        std::map<std::string, OptimizationJob> jobCache;
+        std::shared_ptr<AWSTools> awsTools;
+        std::shared_ptr<AnsibleTools> ansibleTools;
+
+        ~CGOptManager() {
+            if(this->awsTools != nullptr){
+               delete( this->awsTools );
+            }
+        }
     };
 }
 

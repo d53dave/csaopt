@@ -30,6 +30,8 @@ namespace CGOpt {
             std::string publicDNSname;
             AWSInstanceState state;
             bool createdByCGOpt;
+            bool isWorker;
+            bool isMessageQueue;
         };
 
         AWSTools(const std::string &_awsAccessKey,
