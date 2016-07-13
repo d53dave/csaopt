@@ -4,9 +4,6 @@
 [submodule "msgqueue"]
 	path = msgqueue
 	url = https://github.com/d53dave/cgopt-zmq.git
-[submodule "protobuf"]
-	path = protobuf
-	url = https://github.com/d53dave/cgopt-protobuf.git
 [submodule "cgopt-model"]
 	path = cgopt-model
 	url = https://github.com/d53dave/cgopt-model
