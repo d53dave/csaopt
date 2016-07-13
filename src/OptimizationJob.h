@@ -9,7 +9,7 @@
 #include <chrono>
 #include "Optimization.h"
 
-namespace CGOpt {
+namespace CSAOpt {
 
     class OptimizationJob {
     public:

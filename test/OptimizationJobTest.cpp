@@ -9,7 +9,7 @@
 
 TEST_CASE("OptimizationJobTest", "[OptJob]"){
 
-    CGOpt::OptimizationJob optJob;
+    CSAOpt::OptimizationJob optJob;
     optJob.target = std::make_shared<UserDefinedTarget>();
     optJob.optimization = std::make_shared<UserDefinedOptimization>();
     SECTION("Classes and files should be detected"){

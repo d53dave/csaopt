@@ -10,7 +10,7 @@
 #include <memory>
 #include <cxxabi.h>
 
-std::string CGOpt::OptimizationJob::demangle(const char* name) {
+std::string CSAOpt::OptimizationJob::demangle(const char* name) {
 
     int status = 42; // some arbitrary value to eliminate the compiler warning
 

@@ -9,7 +9,7 @@
 #include <vector>
 #include "Target.h"
 
-namespace CGOpt {
+namespace CSAOpt {
     class MessageQueueClient {
 
         bool didFinish(std::string jobId);

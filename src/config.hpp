@@ -3,7 +3,7 @@
 #include <istream>
 #include <chrono>
 
-namespace CGOpt{
+namespace CSAOpt{
     class Config {
     public:
         Config();

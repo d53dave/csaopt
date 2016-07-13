@@ -8,12 +8,13 @@
 #include <sstream>
 #include <set>
 #include "AWSTools.h"
+#include "CSAOptInstance.h"
 
 void sleepcp(int seconds){
     usleep(seconds * 1000 * 1000); //microsecs
 }
 
-namespace CGOpt {
+namespace CSAOpt {
     std::string AWSTools::runEC2Cmd(std::string cmd) const {
         return runCmd(ec2BaseCmd + cmd);
     }
@@ -25,16 +26,16 @@ namespace CGOpt {
 
 
     void AWSTools::getGPUInstances() {
-        std::vector<AWSInstance> availableGPUInstances = this->getAvailableGPUInstances();
+        std::vector<CSAOptInstance> availableGPUInstances = this->getAvailableGPUInstances();
 
-        std::vector<AWSInstance> stoppedInstances;
+        std::vector<CSAOptInstance> stoppedInstances;
         std::copy_if(availableGPUInstances.begin(), availableGPUInstances.end(), std::back_inserter(stoppedInstances),
-                     [](AWSInstance const & x) { return x.state == AWSTools::stopped
+                     [](CSAOptInstance const & x) { return x.state == AWSTools::stopped
                                                         || x.state == AWSTools::stopping; });
 
-        std::vector<AWSInstance> runningInstances;
+        std::vector<CSAOptInstance> runningInstances;
         std::copy_if(availableGPUInstances.begin(), availableGPUInstances.end(), std::back_inserter(runningInstances),
-                     [](AWSInstance const & x) { return x.state == AWSTools::running; });
+                     [](CSAOptInstance const & x) { return x.state == AWSTools::running; });
 
         std::set<std::string> instanceIds;
         size_t instancesToSpinUp = instanceCount - availableGPUInstances.size();

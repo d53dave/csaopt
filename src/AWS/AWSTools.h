@@ -12,27 +12,16 @@
 #include "../SysTools.h"
 #include "spdlog/spdlog.h"
 #include "../config.hpp"
+#include "CSAOptInstance.h"
 
 #pragma once
-namespace CGOpt {
+namespace CSAOpt {
     class AWSTools : public SysTools {
     public:
         enum AWSRegion {
             USEAST1, USWEST2, USWEST1, EUWEST1, EUCENTRAL1, APSOUTHEAST1, APSOUTHEAST2, APNORTHEAST1, SAEAST1
         };
-        enum AWSInstanceState {
-            pending = 0, running = 16, shutting_down = 32, terminated = 48, stopping = 64, stopped = 80
-        };
 
-        struct AWSInstance {
-            std::string id;
-            std::string publicIp;
-            std::string publicDNSname;
-            AWSInstanceState state;
-            bool createdByCGOpt;
-            bool isWorker;
-            bool isMessageQueue;
-        };
 
         AWSTools(const std::string &_awsAccessKey,
                  const std::string &_awsSecretAccessKey,
@@ -92,7 +81,7 @@ namespace CGOpt {
 
         void runSetup();
 
-        std::vector<AWSInstance> getInstances() const;
+        std::vector<CSAOptInstance> getInstances() const;
 
         std::vector<std::string> startAndGetInstanceAddresses();
 
@@ -134,8 +123,8 @@ namespace CGOpt {
         bool terminateOnExit = false;
         bool useSeparateServerForMsgQueue = false;
 //        std::vector<AWSInstance> availableGPUInstances;
-        std::vector<AWSInstance> workingSet;
-        AWSInstance messageQueue;
+        std::vector<CSAOptInstance> workingSet;
+        CSAOptInstance messageQueue;
 
 
         // Methods
@@ -143,10 +132,10 @@ namespace CGOpt {
         bool remoteKeypairExists();
         void createSecGroup();
         void removeRemoteKeypair();
-        std::vector<AWSInstance> getAvailableGPUInstances();
+        std::vector<CSAOptInstance> getAvailableGPUInstances();
         void createAndStoreKeypair();
         void shutdownInstances();
-        AWSInstance getMessageQueue();
+        CSAOptInstance getMessageQueue();
 
         std::string getLocalIp() const;
         std::string runEC2Cmd(const std::string cmd) const;

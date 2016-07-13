@@ -6,7 +6,7 @@
 #include "config.hpp"
 #include <fstream>
 
-void CGOpt::AnsibleTools::writeHostsFile(std::vector<AWSTools::AWSInstance> instances) {
+void CSAOpt::AnsibleTools::writeHostsFile(std::vector<AWSTools::AWSInstance> instances) {
     assert(hostsFilePath.size() > 0);
 
     std::ofstream outputFile( hostsFilePath );

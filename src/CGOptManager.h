@@ -9,13 +9,13 @@
 #include "OptimizationJob.h"
 #include "Target.h"
 #include "Optimization.h"
-#include "AWSTools.h"
+#include "AWS/AWSTools.h"
 #include "AnsibleTools.h"
 #include <map>
 
-namespace CGOpt {
+namespace CSAOpt {
 
-    class CGOptManager {
+    class CSAOptManager {
     public:
         static CGOptManager& getInstance()
         {

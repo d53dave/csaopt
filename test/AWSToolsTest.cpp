@@ -3,13 +3,13 @@
 //
 
 #include "TestConfig.h"
-#include "../src/AWSTools.h"
+#include "../src/AWS/AWSTools.h"
 
 TEST_CASE("AWSTools", "[AWS]"){
     SECTION("AWSTools can be instantiated"){
         std::string secretKey{"secretKey"};
         std::string accessKey{"accessKey"};
-        CGOpt::AWSTools tools(accessKey, secretKey);
+        CSAOpt::AWSTools tools(accessKey, secretKey);
     }
 #ifdef AWS_TEST_FULL
     SECTION("AWSTools starts the desired count of instances"){

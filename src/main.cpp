@@ -7,7 +7,7 @@
 #include <thread>
 #include <string>
 #include "config.hpp"
-#include "AWSTools.h"
+#include "AWS/AWSTools.h"
 
 int main(int argc, char** argv) {
 

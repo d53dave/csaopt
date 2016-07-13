@@ -4,9 +4,9 @@
 
 #pragma once
 
-#import "AWSTools.h"
+#import "AWS/AWSTools.h"
 
-namespace CGOpt{
+namespace CSAOpt{
     class AnsibleTools {
     public:
         void writeHostsFile(std::vector<AWSTools::AWSInstance> instances);
