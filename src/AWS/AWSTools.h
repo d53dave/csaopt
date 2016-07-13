@@ -9,9 +9,9 @@
 #include <pwd.h>
 #include <unistd.h>
 #include "picojson/picojson.h"
-#include "SysTools.h"
+#include "../SysTools.h"
 #include "spdlog/spdlog.h"
-#include "config.hpp"
+#include "../config.hpp"
 
 #pragma once
 namespace CGOpt {
