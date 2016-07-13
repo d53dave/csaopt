@@ -15,13 +15,13 @@ set(SOURCE_FILES
         src/SysTools.h
         src/AnsibleTools.cpp
         src/AnsibleTools.h
-        src/AWSTools.h
-        src/AWSTools.cpp
+        src/AWS/AWSTools.h
+        src/AWS/AWSTools.cpp
         src/CGOptManager.h
         src/CGOptManager.cpp
         src/OptimizationJob.h
         src/OptimizationJob.cpp
-        src/MessageQueueClient.cpp src/MessageQueueClient.h)
+        src/MessageQueueClient.cpp src/MessageQueueClient.h src/AWS/CSAOptInstance.cpp src/AWS/CSAOptInstance.h)
 
 
 add_executable(cgopt ${SOURCE_FILES})
@@ -36,7 +36,7 @@ add_test(NAME SysToolsTest COMMAND SysToolsTest)
 add_executable(AnsibleToolsTest test/AnsibleToolsTest.cpp src/AnsibleTools.h src/AnsibleTools.cpp)
 add_test(NAME AnsibleToolsTest COMMAND AnsibleToolsTest)
 
-add_executable(AWSToolsTest test/AWSToolsTest.cpp src/AWSTools.h src/AWSTools.cpp src/SysTools.h)
+add_executable(AWSToolsTest test/AWSToolsTest.cpp src/AWS/AWSTools.h src/AWS/AWSTools.cpp src/SysTools.h)
 target_link_libraries(AWSToolsTest model)
 add_test(NAME AWSToolsTest COMMAND AwsToolsTest)
 
