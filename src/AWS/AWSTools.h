@@ -1,14 +1,14 @@
 //
 // Created by David Sere on 28/09/15.
 //
-#define PICOJSON_USE_INT64
 
 #include <vector>
 #include <iostream>
 #include <stdlib.h>
 #include <pwd.h>
 #include <unistd.h>
-#include "picojson/picojson.h"
+#include <aws/ec2/EC2Client.h>
+#include <aws/core/Aws.h>
 #include "../SysTools.h"
 #include "spdlog/spdlog.h"
 #include "../config.hpp"
@@ -16,6 +16,9 @@
 
 #pragma once
 namespace CSAOpt {
+    typedef std::map<InstanceId, CSAOptInstance> WorkingSet;
+
+
     class AWSTools : public SysTools {
     public:
         enum AWSRegion {
@@ -26,71 +29,31 @@ namespace CSAOpt {
         AWSTools(const std::string &_awsAccessKey,
                  const std::string &_awsSecretAccessKey,
                  const AWSTools::AWSRegion _region = AWSRegion::EUCENTRAL1,
-                 size_t _instanceCount = 1)
-                : awsAccessKey(_awsAccessKey),
-                  awsSecretAccessKey(_awsSecretAccessKey),
-                  region(_region),
-                  instanceCount(_instanceCount) {
-
-            std::string loggerName{Config::loggerName()};
-            this->_logger = spdlog::get(loggerName);
-            if(!this->_logger){
-                if(Config::fileLogging()){
-                    this->_logger = spdlog::daily_logger_mt(loggerName, 0, 0);
-                } else {
-                    this->_logger = spdlog::stdout_logger_mt(loggerName);
-                }
-            }
-
-            if(Config::verboseLogging()){
-                this->_logger->set_level(spdlog::level::trace);
-            }
-
-            this->envString = "AWS_ACCESS_KEY_ID=" + awsAccessKey
-                              + " AWS_SECRET_ACCESS_KEY=" + awsSecretAccessKey + " AWS_DEFAULT_REGION=" +
-                              regionEnumStrings[region];
-            this->ec2BaseCmd = envString + " /usr/local/bin/aws ec2 ";
-
-            const char *homeDir = std::getenv("HOME");
-
-            if (!homeDir) {
-                struct passwd *pwd = getpwuid(getuid());
-                if (pwd) {
-                    homeDir = pwd->pw_dir;
-                }
-            }
-
-            assert(homeDir != NULL && "Could not determine home directory, rerun with env variable HOME set." );
-
-            this->home = std::string{homeDir};
-            this->keyPath = {home+"/.cgopt/"};
-
-            //check if aws cli is available
-            //for whatever reason, the call will return 255 when debugging
-            //so consider removing this assertion if need arises.
-            int retCode;
-            this->runCmd("aws help > /dev/null 2>&1", retCode);
-            //assert(retCode == 0 && "awscli not found");
-
-            this->myIp = this->getLocalIp();
-            assert(myIp.size() > 0
-                   && "Couldn't get this machines externally visible ip address. Are you connected to the internet?");
-
-            _logger->info("AWSTools successfully initialized.");
-        }
+                 size_t _instanceCount = 1);
 
         void runSetup();
 
-        std::vector<CSAOptInstance> getInstances() const;
-
-        std::vector<std::string> startAndGetInstanceAddresses();
+        WorkingSet getInstances() const;
 
         void setTerminateOnExit(bool _terminateOnExit) { this->terminateOnExit = _terminateOnExit; };
-        void setMessageQueueType(std::string serverType){ this->messageQueueAWSServerType = serverType; };
-        void getGPUInstances();
+
+        void setMessageQueueType(std::string serverType) { this->messageQueueAWSServerType = serverType; };
+
 
         ~AWSTools() {
-            shutdownInstances();
+            bool printNotice = false;
+            for (auto &&kvp : this->workingSet) {
+                if (kvp.second.state == CSAOptInstance::InstanceState::running) {
+                    _logger->alert("AWSTools is shutting down but instance with id {} is still running.", kvp.first);
+                    printNotice = true;
+                }
+            }
+
+            if (printNotice) {
+                _logger->alert("ATTENTION: It appears that not all instances could be stopped/terminated.\n"
+                                       "Please verify the state of the instances in your AWS console and manually"
+                                       "turn off instances that were left behind. Sorry :/");
+            }
         };
 
     private:
@@ -106,43 +69,53 @@ namespace CSAOpt {
         const std::string T2_MICRO{"t2.micro"};
         const std::string T2_SMALL{"t2.small"};
         const std::string M3_MEDIUM{"m3.medium"};
-        const std::string secGroupName{"cgopt-sg"};
-        const std::string keyName{"cgopt-key"};
-        const std::string keyFileName{"cgopt-key.pem"};
-        std::string home;       // in constructor
-        std::string keyPath;    // in constructor
-        std::string myIp;       // in constructor
+        std::string secGroupName;   // in constructor
+        std::string home;           // in constructor
+        std::string keyName;        // in constructor
+        std::string keyPath;        // in constructor
+        std::string myIp;           // in constructor
         std::string messageQueueAWSServerType;
 
         std::shared_ptr<spdlog::logger> _logger;
 
         // PRIVATE DATA
-        std::string awsAccessKey, awsSecretAccessKey, envString, ec2BaseCmd;
+        std::string awsAccessKey, awsSecretAccessKey;
         AWSRegion region;
         size_t instanceCount;
         bool terminateOnExit = false;
-        bool useSeparateServerForMsgQueue = false;
-//        std::vector<AWSInstance> availableGPUInstances;
-        std::vector<CSAOptInstance> workingSet;
+        bool useSeparateMachineAsMsgQueue = false;
+        WorkingSet workingSet;
         CSAOptInstance messageQueue;
-
+        std::string trackingTag;
 
         // Methods
-        bool keyPresentLocally();
-        bool remoteKeypairExists();
-        void createSecGroup();
-        void removeRemoteKeypair();
-        std::vector<CSAOptInstance> getAvailableGPUInstances();
-        void createAndStoreKeypair();
-        void shutdownInstances();
-        CSAOptInstance getMessageQueue();
+        void setupLogger();
+
+        std::string createSecGroup(std::string name, Aws::EC2::EC2Client &client);
+
+
+        bool keyPresentLocally(std::string path);
+
+
+        void terminateInstances(std::map<Aws::String, std::string> instanceIps, Aws::EC2::EC2Client &client);
+
+        CSAOptInstance &getMessageQueue();
 
         std::string getLocalIp() const;
-        std::string runEC2Cmd(const std::string cmd) const;
-        std::string runEC2Cmd(const std::string cmd, int &retCode) const;
-        std::string getInstancesStringByType(const std::string type) const;
-        std::vector<std::string> getSecurityGroupData() const;
-        std::vector<std::string> getInstanceAddresses() const;
+
+        std::string getKeyMaterial(std::string name, Aws::EC2::EC2Client &client);
+
+        WorkingSet startInstances(int instanceCount, Aws::EC2::Model::InstanceType instanceType,
+                                            Aws::EC2::EC2Client &client);
+
+        std::map<InstanceId, std::string> getInstanceAddresses(const WorkingSet &instances,
+                                                               Aws::EC2::EC2Client &client) const;
+
+        void shutdownInstances(std::map<Aws::String, std::string> instanceIps, Aws::EC2::EC2Client &client);
+
+        void shutdown(Aws::EC2::EC2Client &client);
+
+        void waitUntilRunning(const std::vector<Aws::String> instanceIds, Aws::EC2::EC2Client &client) const;
     };
 
 }

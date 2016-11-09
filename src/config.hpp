@@ -2,6 +2,7 @@
 
 #include <istream>
 #include <chrono>
+#include <string>
 
 namespace CSAOpt{
     class Config {
@@ -13,7 +14,7 @@ namespace CSAOpt{
         Config parsePath(std::string path);
 
         static bool verboseLogging(){ return true; }
-        static bool fileLogging(){ return strncmp(loggerName(), "dailyLogger", 100) == 0; }
+        static bool fileLogging(){ return std::string{loggerName()} == "dailyLogger"; }
         static const char *loggerName(){ return loggerNameStr; }
         static std::string hostFilePath(){ return "./ansible/hosts";}
 

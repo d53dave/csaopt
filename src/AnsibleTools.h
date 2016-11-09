@@ -4,12 +4,12 @@
 
 #pragma once
 
-#import "AWS/AWSTools.h"
+#include "AWS/AWSTools.h"
 
 namespace CSAOpt{
     class AnsibleTools {
     public:
-        void writeHostsFile(std::vector<AWSTools::AWSInstance> instances);
+        void writeHostsFile(std::vector<CSAOptInstance> instances);
         void setHostsFilePath(std::string _hostsFilePath){ this->hostsFilePath = _hostsFilePath;};
         ~AnsibleTools() {
             if(hostsFilePath.size() > 0){

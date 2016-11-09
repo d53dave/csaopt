@@ -21,10 +21,10 @@ TEST_CASE("AWSTools", "[AWS]"){
 
         int instanceCount = 3;
 
-        CGOpt::AWSTools tools(accessKey, secretKey, CGOpt::AWSTools::EUWEST1, instanceCount);
-        tools.runSetup();
+        CSAOpt::AWSTools tools(accessKey, secretKey, CSAOpt::AWSTools::EUWEST1, instanceCount);
+//        tools.runSetup();
 
-        tools.getGPUInstances();
+
 
         REQUIRE(tools.getInstances().size() == instanceCount);
     }

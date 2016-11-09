@@ -7,8 +7,8 @@
 #include <vector>
 #include <string>
 #include "OptimizationJob.h"
-#include "Target.h"
-#include "Optimization.h"
+#include <model/Target.h>
+#include <model/Optimization.h>
 #include "AWS/AWSTools.h"
 #include "AnsibleTools.h"
 #include <map>
@@ -17,9 +17,9 @@ namespace CSAOpt {
 
     class CSAOptManager {
     public:
-        static CGOptManager& getInstance()
+        static CSAOptManager& getInstance()
         {
-            static CGOptManager instance; // Guaranteed to be destroyed.
+            static CSAOptManager instance; // Guaranteed to be destroyed.
             // Instantiated on first use.
             return instance;
         }
@@ -35,9 +35,9 @@ namespace CSAOpt {
         bool newResultsAvailable(std::string jobId);
     private:
         //singleton stuff
-        CGOptManager() {};
-        CGOptManager(CGOptManager const&)   = delete;
-        void operator=(CGOptManager const&) = delete;
+        CSAOptManager() {};
+        CSAOptManager(CSAOptManager const&)   = delete;
+        void operator=(CSAOptManager const&) = delete;
 
         std::map<std::string, OptimizationJob> jobCache;
         std::shared_ptr<AWSTools> awsTools;

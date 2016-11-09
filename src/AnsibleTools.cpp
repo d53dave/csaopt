@@ -6,13 +6,14 @@
 #include "config.hpp"
 #include <fstream>
 
-void CSAOpt::AnsibleTools::writeHostsFile(std::vector<AWSTools::AWSInstance> instances) {
+void CSAOpt::AnsibleTools::writeHostsFile(std::vector<CSAOptInstance> instances) {
     assert(hostsFilePath.size() > 0);
 
     std::ofstream outputFile( hostsFilePath );
     outputFile << "[worker]\n";
 
-    AWSTools::AWSInstance* messageQueue = nullptr;
+    // TODO: revise this
+    CSAOptInstance* messageQueue = nullptr;
     for(auto &instance: instances){
         if(instance.isWorker){
             outputFile << instance.publicIp << "\n";
