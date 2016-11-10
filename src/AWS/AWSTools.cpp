@@ -7,6 +7,7 @@
 #include <vector>
 #include <sstream>
 #include <set>
+#include <thread>
 #include <stdexcept>
 #include <aws/ec2/model/DescribeInstancesRequest.h>
 #include <aws/ec2/model/RunInstancesRequest.h>
@@ -21,8 +22,6 @@
 #include "CSAOptInstance.h"
 
 namespace CSAOpt {
-
-
 
 
     AWSTools::AWSTools(const std::string &_awsAccessKey, const std::string &_awsSecretAccessKey,
@@ -58,7 +57,7 @@ namespace CSAOpt {
     }
 
     WorkingSet AWSTools::startInstances(int instanceCount, Aws::EC2::Model::InstanceType instanceType,
-                              Aws::EC2::EC2Client &client) {
+                                        Aws::EC2::EC2Client &client) {
         Aws::EC2::Model::RunInstancesRequest request;
 
         request
@@ -83,8 +82,9 @@ namespace CSAOpt {
             }
         } else {
             auto error = runInstances.GetError();
-            std::cout << "Error: " << error.GetMessage() << std::endl;
-            throw std::runtime_error("Error while staring instances: " + error.GetMessage());
+            this->_logger->error("RunInstances call failed with error {} and message {}",
+                                 error.GetExceptionName(), error.GetMessage());
+            throw std::runtime_error("RunInstances Error while staring instances: " + error.GetMessage());
         }
 
         return instances;
@@ -99,8 +99,8 @@ namespace CSAOpt {
             return secGroupResponse.GetResult().GetGroupId();
         } else {
             auto error = secGroupResponse.GetError();
-            std::cerr << "CreateSecurityGroup call failed with error" << error.GetExceptionName()
-            << " and message " << error.GetMessage() << std::endl;
+            this->_logger->error("CreateSecurityGroup call failed with error {} and message {}",
+                                 error.GetExceptionName(), error.GetMessage());
             throw std::runtime_error("CreateSecurityGroup call failed with error '" + error.GetExceptionName()
                                      + "' and message: " + error.GetMessage());
         }
@@ -121,7 +121,7 @@ namespace CSAOpt {
 
 
     std::string AWSTools::getKeyMaterial(std::string name, Aws::EC2::EC2Client &client) {
-        _logger->info("Getting new keys...");
+        _logger->info("Getting keys...");
 
         Aws::EC2::Model::CreateKeyPairRequest createKeyPairRequest;
 
@@ -131,9 +131,9 @@ namespace CSAOpt {
             return keyPairResponse.GetResult().GetKeyMaterial();
         } else {
             auto error = keyPairResponse.GetError();
-            std::cerr << "CreateSecurityGroup call failed with error" << error.GetExceptionName()
-            << " and message " << error.GetMessage() << std::endl;
-            throw std::runtime_error("CreateSecurityGroup call failed with error '" + error.GetExceptionName()
+            this->_logger->error("CreateKeyPair call failed with error {} and message {}",
+                                 error.GetExceptionName(), error.GetMessage());
+            throw std::runtime_error("CreateKeyPair call failed with error '" + error.GetExceptionName()
                                      + "' and message: " + error.GetMessage());
         }
     }
@@ -150,20 +150,29 @@ namespace CSAOpt {
 
         if (describeStatuses.IsSuccess()) {
             auto states = describeStatuses.GetResult().GetInstanceStatuses();
+            size_t retries = 0;
 
             while (std::any_of(states.cbegin(), states.cend(),
                                [](const Aws::EC2::Model::InstanceStatus &state) {
                                    return state.GetInstanceState().GetName() !=
                                           Aws::EC2::Model::InstanceStateName::running;
                                }) || states.size() < instanceIds.size()) {
-                std::this_thread::sleep_for(std::chrono::seconds(5));
-                std::cout << "Still waiting for instances to spin up." << std::endl;
+                std::this_thread::sleep_for(std::chrono::seconds(this->waitIntervalSeconds));
+                this->_logger->info()<< "Still waiting for instances to spin up..." << std::endl;
                 states = client.DescribeInstanceStatus(instanceStatusRequest).GetResult().GetInstanceStatuses();
+                if(retries++ >= this->maxRetries) {
+                    this->_logger->error("Unsuccessfully Waited for {} seconds for all Instances to start. Aborting.",
+                                         maxRetries*this->waitIntervalSeconds);
+
+                    throw std::runtime_error("Maxretries reached.");
+                }
             }
         } else {
             auto error = describeStatuses.GetError();
-            std::cout << "Error: " << error.GetMessage() << std::endl;
-            throw std::runtime_error("Error while waiting for instances to start: " + error.GetMessage());
+            this->_logger->error("DescribeInstanceStatus call failed with error {} and message {}",
+                                 error.GetExceptionName(), error.GetMessage());
+            throw std::runtime_error("DescribeInstanceStatus call failed with error '" + error.GetExceptionName()
+                                     + "' and message: " + error.GetMessage());
         }
     }
 
@@ -208,6 +217,13 @@ namespace CSAOpt {
         return instanceIps;
     }
 
+
+    void writeKeyMaterial(std::string material, std::string path) {
+        std::ofstream ofstream(path);
+        ofstream << material;
+        ofstream.close();
+    }
+
     void AWSTools::runSetup() {
         _logger->info("Running AWS Setup");
 
@@ -229,14 +245,36 @@ namespace CSAOpt {
         this->createSecGroup(this->secGroupName, client);
 
         std::string keymaterial = this->getKeyMaterial(this->keyName, client);
+        if (keymaterial.empty()) {
+            throw std::runtime_error("Could not retrieve keys");
+        }
+
+        writeKeyMaterial(keymaterial, this->keyPath);
+
+        if (!this->keyPresentLocally(this->keyPath)) {
+            throw std::runtime_error("Could not store key material");
+        }
+
+        this->createWorkerThread = std::thread([this]{
+            this->_logger->debug("Thread[{}] started. Creating workers.", std::this_thread::get_id());
+            this->startInstances(2, mapType(this->T2_MICRO), client);
+        });
 
         if (useSeparateMachineAsMsgQueue) {
-            this->startInstances(1, mapType(this->messageQueueAWSServerType), client);
-            this->messageQueue = getMessageQueue();
+            this->createMessageQueueThread = std::thread([this]{
+                this->startInstances(1, mapType(this->messageQueueAWSServerType), client);
+                this->messageQueue = getMessageQueue();
+            });
+
+            this->createMessageQueueThread.join();
         }
+        this->createWorkerThread.join();
 
     }
 
+    AWSTools::~AWSTools() {
+       this->stopThreads = true;
+    }
 
     CSAOptInstance &AWSTools::getMessageQueue() {
         for (auto &&kvp : this->workingSet) {

@@ -116,6 +116,13 @@ namespace CSAOpt {
         void shutdown(Aws::EC2::EC2Client &client);
 
         void waitUntilRunning(const std::vector<Aws::String> instanceIds, Aws::EC2::EC2Client &client) const;
+
+        // Thread stuff
+        std::thread createWorkerThread;
+        std::thread createMessageQueueThread;
+        bool stopThreads;
+        bool maxRetries;
+        size_t waitIntervalSeconds;
     };
 
 }
