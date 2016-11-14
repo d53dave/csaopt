@@ -7,7 +7,7 @@
 #include <string>
 #include <memory>
 #include <chrono>
-#include <model/Optimization.h>
+#include "../model/src/Optimization.h"
 
 namespace CSAOpt {
 

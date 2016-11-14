@@ -7,7 +7,8 @@
 #include <string>
 #include <map>
 #include <vector>
-#include "Target.h"
+#include <Target.h>
+
 
 namespace CSAOpt {
     class MessageQueueClient {
@@ -15,7 +16,7 @@ namespace CSAOpt {
         bool didFinish(std::string jobId);
 
     private:
-        std::map<std::string, std::vector<Target>>
+        std::map<std::string, std::vector<Target>> m;
 
     };
 }

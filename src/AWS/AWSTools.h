@@ -10,7 +10,7 @@
 #include <aws/ec2/EC2Client.h>
 #include <aws/core/Aws.h>
 #include "../SysTools.h"
-#include "spdlog/spdlog.h"
+#include <spdlog/spdlog.h>
 #include "../config.hpp"
 #include "CSAOptInstance.h"
 
@@ -40,21 +40,7 @@ namespace CSAOpt {
         void setMessageQueueType(std::string serverType) { this->messageQueueAWSServerType = serverType; };
 
 
-        ~AWSTools() {
-            bool printNotice = false;
-            for (auto &&kvp : this->workingSet) {
-                if (kvp.second.state == CSAOptInstance::InstanceState::running) {
-                    _logger->alert("AWSTools is shutting down but instance with id {} is still running.", kvp.first);
-                    printNotice = true;
-                }
-            }
-
-            if (printNotice) {
-                _logger->alert("ATTENTION: It appears that not all instances could be stopped/terminated.\n"
-                                       "Please verify the state of the instances in your AWS console and manually"
-                                       "turn off instances that were left behind. Sorry :/");
-            }
-        };
+        ~AWSTools();
 
     private:
 
@@ -106,7 +92,7 @@ namespace CSAOpt {
         std::string getKeyMaterial(std::string name, Aws::EC2::EC2Client &client);
 
         WorkingSet startInstances(int instanceCount, Aws::EC2::Model::InstanceType instanceType,
-                                            Aws::EC2::EC2Client &client);
+                                            const Aws::EC2::EC2Client &client);
 
         std::map<InstanceId, std::string> getInstanceAddresses(const WorkingSet &instances,
                                                                Aws::EC2::EC2Client &client) const;

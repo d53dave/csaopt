@@ -57,7 +57,7 @@ namespace CSAOpt {
     }
 
     WorkingSet AWSTools::startInstances(int instanceCount, Aws::EC2::Model::InstanceType instanceType,
-                                        Aws::EC2::EC2Client &client) {
+                                        const Aws::EC2::EC2Client &client) {
         Aws::EC2::Model::RunInstancesRequest request;
 
         request
@@ -158,11 +158,11 @@ namespace CSAOpt {
                                           Aws::EC2::Model::InstanceStateName::running;
                                }) || states.size() < instanceIds.size()) {
                 std::this_thread::sleep_for(std::chrono::seconds(this->waitIntervalSeconds));
-                this->_logger->info()<< "Still waiting for instances to spin up..." << std::endl;
+                this->_logger->info("Still waiting for instances to spin up...");
                 states = client.DescribeInstanceStatus(instanceStatusRequest).GetResult().GetInstanceStatuses();
-                if(retries++ >= this->maxRetries) {
+                if (retries++ >= this->maxRetries) {
                     this->_logger->error("Unsuccessfully Waited for {} seconds for all Instances to start. Aborting.",
-                                         maxRetries*this->waitIntervalSeconds);
+                                         maxRetries * this->waitIntervalSeconds);
 
                     throw std::runtime_error("Maxretries reached.");
                 }
@@ -255,14 +255,19 @@ namespace CSAOpt {
             throw std::runtime_error("Could not store key material");
         }
 
-        this->createWorkerThread = std::thread([this]{
-            this->_logger->debug("Thread[{}] started. Creating workers.", std::this_thread::get_id());
-            this->startInstances(2, mapType(this->T2_MICRO), client);
+        this->createWorkerThread = std::thread([=] {
+            std::stringstream ss;
+            ss << std::this_thread::get_id();
+            this->_logger->debug("Thread[{}] started. Creating workers.", ss.str());
+            auto workingset = startInstances(2, mapType(this->T2_MICRO), client);
         });
 
         if (useSeparateMachineAsMsgQueue) {
-            this->createMessageQueueThread = std::thread([this]{
-                this->startInstances(1, mapType(this->messageQueueAWSServerType), client);
+            this->createMessageQueueThread = std::thread([=] {
+                std::stringstream ss;
+                ss << std::this_thread::get_id();
+                this->_logger->debug("Thread[{}] started. Creating messagequeue.", ss.str());
+                auto workingset = startInstances(1, mapType(this->messageQueueAWSServerType), client);
                 this->messageQueue = getMessageQueue();
             });
 
@@ -273,7 +278,21 @@ namespace CSAOpt {
     }
 
     AWSTools::~AWSTools() {
-       this->stopThreads = true;
+        this->stopThreads = true;
+
+        bool printNotice = false;
+        for (auto &&kvp : this->workingSet) {
+            if (kvp.second.state == CSAOptInstance::InstanceState::running) {
+                _logger->warn("AWSTools is shutting down but instance with id {} is still running.", kvp.first);
+                printNotice = true;
+            }
+        }
+
+        if (printNotice) {
+            _logger->warn("ATTENTION: It appears that not all instances could be stopped/terminated.\n"
+                                  "Please verify the state of the instances in your AWS console and manually"
+                                  "turn off instances that were left behind. Sorry :/");
+        }
     }
 
     CSAOptInstance &AWSTools::getMessageQueue() {

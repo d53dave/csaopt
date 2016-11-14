@@ -25,17 +25,17 @@ std::string CSAOpt::OptimizationJob::demangle(const char* name) {
 #else
 
 // does nothing if not g++
-std::string CGOpt::OptimizationJob::demangle(const char* name) {
+std::string CSAOpt::OptimizationJob::demangle(const char* name) {
     return name;
 }
 
 #endif
 
 
-std::string CGOpt::OptimizationJob::getTargetClassFile() {
+std::string CSAOpt::OptimizationJob::getTargetClassFile() {
     return type(*target.get());
 }
 
-std::string CGOpt::OptimizationJob::getOptClassFile() {
+std::string CSAOpt::OptimizationJob::getOptClassFile() {
     return type(*optimization.get());
 }

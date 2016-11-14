@@ -1,16 +1,19 @@
 cmake_minimum_required(VERSION 3.3)
 project(csaopt)
 
-set(PROJECT_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include )
+set (PROJECT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/CMakeModules)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/../CMakeModules) # main (top) cmake dir
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules) # project specific cmake dir
 
 include(LibFindMacros)
 
 set(AWS_CPP_BASE /usr/local/Cellar/aws-sdk-cpp/0.12.11/) #MACOS
-set(AWS_CPP_BASE_LINUX /usr/local/include/aws/core/Aws.h)
+set(AWS_CPP_BASE_LINUX /usr/local/include/aws/core)
+set(AWS_LIB_BASE /usr/local/lib/)
 
 # Include dir
 find_path(AWS_SDK_CPP_INCLUDE_DIR
@@ -19,18 +22,28 @@ find_path(AWS_SDK_CPP_INCLUDE_DIR
 
 find_library(AWS_SDK_CPP_CORE_LIBRARY
         NAMES libaws-cpp-sdk-core
-        PATHS ${AWS_CPP_BASE} ${AWS_CPP_BASE_LINUX})
+        PATHS ${AWS_LIB_BASE} ${AWS_CPP_BASE} )
 
 find_library(AWS_SDK_CPP_EC2_LIBRARY
         NAMES libaws-cpp-sdk-ec2
-        PATHS ${AWS_CPP_BASE} ${AWS_CPP_BASE_LINUX})
+        PATHS ${AWS_LIB_BASE} ${AWS_CPP_BASE} )
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
+
 find_package(Threads REQUIRED)
+find_package(model REQUIRED)
 
 add_subdirectory(model)
 
-include_directories("${PROJECT_INCLUDE_DIR}")
+MESSAGE(WARNING "model_INCL_DIRS=${model_INCL_DIRS}")
+
+include_directories(
+#        model
+        ${model_INCLUDE_DIR}
+        ${model_INCL_DIRS}
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_BINARY_DIR}/include   # add the binary tree to the search path so that we will find Version.h
+)
 
 set(SOURCE_FILES
         src/config.hpp
@@ -40,8 +53,8 @@ set(SOURCE_FILES
         src/AnsibleTools.h
         src/AWS/AWSTools.h
         src/AWS/AWSTools.cpp
-        src/CGOptManager.h
-        src/CGOptManager.cpp
+        src/CSAOptManager.h
+        src/CSAOptManager.cpp
         src/OptimizationJob.h
         src/OptimizationJob.cpp
         src/MessageQueueClient.cpp
@@ -54,7 +67,6 @@ set(SOURCE_FILES
 add_executable(csaopt ${SOURCE_FILES})
 
 set(AWS_INCLUDES aws-cpp-sdk-core aws-cpp-sdk-ec2 Threads::Threads)
-
 target_link_libraries(csaopt model ${AWS_INCLUDES})
 
 enable_testing()
@@ -89,3 +101,6 @@ add_test(NAME OpimizationJobTest COMMAND OpimizationJobTest)
 #    add_test(NAME ${testName} COMMAND ${testName} )
 #endforeach(testFile)
 
+
+#MESSAGE(WARNING "       model headers=${model_HEADERS} \n
+#        model include=${model_INCLUDE_DIRS}")

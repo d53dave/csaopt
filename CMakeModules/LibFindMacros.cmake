@@ -123,8 +123,11 @@ function (libfind_process PREFIX)
     set(includeopts ${${PREFIX}_PROCESS_INCLUDES})
     set(libraryopts ${${PREFIX}_PROCESS_LIBS})
 
+
+
     # Process deps to add to
     foreach (i ${PREFIX} ${${PREFIX}_DEPENDENCIES})
+        MESSAGE(WARNING "incl=${${i}_INCLUDE_DIRS} and lib=${${i}_LIBRARIES}")
         if (DEFINED ${i}_INCLUDE_OPTS OR DEFINED ${i}_LIBRARY_OPTS)
             # The package seems to export option lists that we can use, woohoo!
             list(APPEND includeopts ${${i}_INCLUDE_OPTS})

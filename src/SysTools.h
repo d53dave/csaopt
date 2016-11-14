@@ -3,11 +3,11 @@
 //
 #pragma once
 
-#include "pstream/pstream.h"
 #include <ios>
 #include <cctype>
 #include <string>
 #include <algorithm>
+#include <pstream/pstream.h>
 
 typedef std::istreambuf_iterator<char> pstrm_iter;
 

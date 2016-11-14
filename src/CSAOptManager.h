@@ -7,8 +7,6 @@
 #include <vector>
 #include <string>
 #include "OptimizationJob.h"
-#include <model/Target.h>
-#include <model/Optimization.h>
 #include "AWS/AWSTools.h"
 #include "AnsibleTools.h"
 #include <map>
@@ -43,7 +41,7 @@ namespace CSAOpt {
         std::shared_ptr<AWSTools> awsTools;
         std::shared_ptr<AnsibleTools> ansibleTools;
 
-        ~CGOptManager() {
+        ~CSAOptManager() {
             if(this->awsTools != nullptr){
                delete( this->awsTools );
             }
