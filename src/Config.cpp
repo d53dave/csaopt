@@ -2,7 +2,7 @@
 // Created by dotdi on 14.11.16.
 //
 
-#include "config.hpp"
+#include "Config.h"
 
 namespace CSAOpt {
 
