@@ -30,49 +30,55 @@ find_library(AWS_SDK_CPP_EC2_LIBRARY
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
+find_package(LibUUID REQUIRED)
 find_package(Threads REQUIRED)
-find_package(model REQUIRED)
+find_package(Libedit REQUIRED)
+find_package(model)
 
 add_subdirectory(model)
-
-MESSAGE(WARNING "model_INCL_DIRS=${model_INCL_DIRS}")
 
 include_directories(
 #        model
         ${model_INCLUDE_DIR}
         ${model_INCL_DIRS}
+        ${Libedit_INCLUDE_DIR}
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_BINARY_DIR}/include   # add the binary tree to the search path so that we will find Version.h
 )
 
 set(SOURCE_FILES
-        src/config.hpp
+        src/Config.h
+        src/Config.cpp
         src/main.cpp
         src/SysTools.h
         src/AnsibleTools.cpp
         src/AnsibleTools.h
         src/AWS/AWSTools.h
         src/AWS/AWSTools.cpp
-        src/CSAOptManager.h
-        src/CSAOptManager.cpp
+        src/Manager/CSAOptManager.h
+        src/Manager/CSAOptManager.cpp
         src/OptimizationJob.h
         src/OptimizationJob.cpp
         src/MessageQueueClient.cpp
         src/MessageQueueClient.h
         src/AWS/CSAOptInstance.cpp
         src/AWS/CSAOptInstance.h
-        src/AWS/Utils.h)
+        src/AWS/Utils.h src/InteractiveShell.cpp src/InteractiveShell.h src/Manager/ModelValidator.h)
 
 
 add_executable(csaopt ${SOURCE_FILES})
+add_definitions( -DCSAOPT_MODEL_PATH="${CMAKE_CURRENT_SOURCE_DIR}/model")
 
 set(AWS_INCLUDES aws-cpp-sdk-core aws-cpp-sdk-ec2 Threads::Threads)
-target_link_libraries(csaopt model ${AWS_INCLUDES})
+target_link_libraries(csaopt model ${AWS_INCLUDES} uuid curses edit)
 
 enable_testing()
 
 add_executable(SysToolsTest test/SysToolsTest.cpp src/SysTools.h)
 add_test(NAME SysToolsTest COMMAND SysToolsTest)
+
+add_executable(ConfigTest test/ConfigTest.cpp src/Config.h src/Config.cpp)
+add_test(NAME ConfigTest COMMAND ConfigTest)
 
 add_executable(AnsibleToolsTest test/AnsibleToolsTest.cpp src/AnsibleTools.h src/AnsibleTools.cpp)
 add_test(NAME AnsibleToolsTest COMMAND AnsibleToolsTest)

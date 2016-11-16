@@ -5,7 +5,6 @@
 #include "Config.h"
 
 namespace CSAOpt {
-
     const std::string basePath = "~./.csaopt/";
 
     Config::ConfigMap Config::config{
@@ -19,7 +18,8 @@ namespace CSAOpt {
             {"optimization.maxcycles", ""},
             {"optimization.classes",   ""},
             {"optimization.targets",   ""},
-            {"optimization.type",      ""}
+            {"optimization.type",      ""},
+            {"optimization.modelSrcPath", CSAOPT_MODEL_PATH} //passed in as a -D by CMake
     };
 }
 
