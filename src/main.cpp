@@ -8,7 +8,7 @@
 #include <string>
 #include "Config.h"
 #include "AWS/AWSTools.h"
-#include "CSAOptManager.h"
+#include "Manager/CSAOptManager.h"
 #include "helpers.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -75,7 +75,7 @@ int main(int argc, const char *const *argv) {
         bool interactiveMode = interactiveSwitch.getValue();
         debug = debugSwitch.getValue();
 
-        Config::parse(configArg.getValue());
+        Config::parse(configPath);
 
         std::string loggerName{Config::loggerName()};
         std::vector<spdlog::sink_ptr> sinks;
