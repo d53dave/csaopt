@@ -19,7 +19,7 @@ namespace CSAOpt {
             {"optimization.classes",   ""},
             {"optimization.targets",   ""},
             {"optimization.type",      ""},
-            {"optimization.modelSrcPath", CSAOPT_MODEL_PATH} //passed in as a -D by CMake
+            {"validator.modelSrcPath", CSAOPT_MODEL_PATH} //passed in as a -D by CMake
     };
 }
 

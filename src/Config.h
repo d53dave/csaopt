@@ -50,6 +50,10 @@ namespace CSAOpt {
             return config["interactive.histpath"];
         }
 
+        static std::string getModelSrcPath() {
+            return config["validator.modelSrcPath"];
+        }
+
         static std::string getAll() {
             std::stringstream ss;
             ss << std::endl;
