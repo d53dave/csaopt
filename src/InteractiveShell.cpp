@@ -47,7 +47,7 @@ namespace CSAOpt {
 
         /* Set the size of the history */
         history(hist, &ev, H_SETSIZE, 800);
-        history(hist, &ev, H_LOAD, Config::getInteractiveHistoryPath());
+        history(hist, &ev, H_LOAD, Config::getInteractiveHistoryPath().c_str());
 
         /* This sets up the call back functions for history functionality */
         el_set(el, EL_HIST, history, hist);
@@ -75,7 +75,7 @@ namespace CSAOpt {
             }
         }
 
-        history(hist, &ev, H_SAVE, Config::getInteractiveHistoryPath());
+        history(hist, &ev, H_SAVE, Config::getInteractiveHistoryPath().c_str());
 
 
         /* Clean up our memory */
