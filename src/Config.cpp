@@ -6,13 +6,16 @@
 
 namespace CSAOpt {
 
-    Config::ConfigMap Config::config {
+    const std::string basePath = "~./.csaopt/";
+
+    Config::ConfigMap Config::config{
             //initializing defaults
             {"logger.name",            "console"},
-            {"logger.path",            "~/.csaopt/"},
+            {"logger.path",            basePath},
             {"logger.filename",        "csaopt.log"},
             {"logger.verbose",         "false"},
-            {"ansible.hosts",          "~/.csaopt/hosts"},
+            {"interactive.histpath",   basePath + ".hist"},
+            {"ansible.hosts",          basePath + "hosts"},
             {"optimization.maxcycles", ""},
             {"optimization.classes",   ""},
             {"optimization.targets",   ""},

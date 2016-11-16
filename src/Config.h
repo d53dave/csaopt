@@ -7,6 +7,7 @@
 #include <string>
 #include <fstream>
 #include <spdlog/spdlog.h>
+#include "helpers.h"
 
 namespace CSAOpt {
     class Config {
@@ -45,12 +46,25 @@ namespace CSAOpt {
             return config["ansible.hosts"];
         }
 
+        static std::string getInteractiveHistoryPath() {
+            return config["interactive.histpath"];
+        }
+
         static std::string getAll() {
             std::stringstream ss;
+            ss << std::endl;
             for (auto &&kvp : config) {
-                ss << kvp.first << "=" << std::endl;
+                ss << kvp.first << " = " << kvp.second << std::endl;
             }
             return ss.str();
+        }
+
+        static std::string get(std::string &key) {
+            return config[key];
+        }
+
+        static std::string get(std::string &&key) {
+            return config[key];
         }
 
     private:
@@ -61,13 +75,6 @@ namespace CSAOpt {
         ~Config() = default;
 
         static ConfigMap config;
-
-        static inline std::string trim(const std::string &s) {
-            auto whitespaceFront = std::find_if_not(s.begin(), s.end(), [](int c) { return std::isspace(c); });
-            return std::string(whitespaceFront,
-                               std::find_if_not(s.rbegin(), std::string::const_reverse_iterator(whitespaceFront),
-                                                [](int c) { return std::isspace(c); }).base());
-        }
     };
 }
 
