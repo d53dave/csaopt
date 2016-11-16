@@ -3,7 +3,7 @@
 //
 
 #include "AnsibleTools.h"
-#include "config.hpp"
+#include "Config.h"
 #include <fstream>
 
 void CSAOpt::AnsibleTools::writeHostsFile(std::vector<CSAOptInstance> instances) {
