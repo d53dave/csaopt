@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <cstdarg>
+
 static inline std::string getFilenameFromPath(std::string const &path) {
     return path.substr(path.find_last_of("/\\") + 1);
 }
