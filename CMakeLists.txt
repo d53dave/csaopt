@@ -49,6 +49,7 @@ include_directories(
 set(SOURCE_FILES
         src/Config.h
         src/Config.cpp
+        src/helpers.h
         src/main.cpp
         src/SysTools.h
         src/AnsibleTools.cpp
@@ -63,7 +64,10 @@ set(SOURCE_FILES
         src/MessageQueueClient.h
         src/AWS/CSAOptInstance.cpp
         src/AWS/CSAOptInstance.h
-        src/AWS/Utils.h src/InteractiveShell.cpp src/InteractiveShell.h src/Manager/ModelValidator.h)
+        src/AWS/Utils.h
+        src/InteractiveShell.cpp
+        src/InteractiveShell.h
+        src/Manager/ModelValidator.h)
 
 
 add_executable(csaopt ${SOURCE_FILES})
