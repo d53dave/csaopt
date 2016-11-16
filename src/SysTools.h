@@ -14,7 +14,7 @@ typedef std::istreambuf_iterator<char> pstrm_iter;
 
 class SysTools {
 public:
-    static std::string runCmd(const std::string cmd) const {
+    static std::string runCmd(const std::string cmd) {
         redi::ipstream proc(cmd);
 
         std::string output(pstrm_iter(proc.rdbuf()), pstrm_iter());
@@ -22,7 +22,7 @@ public:
         return trim(output);
     }
 
-    static std::string runCmd(const std::string cmd, int &retCode) const {
+    static std::string runCmd(const std::string cmd, int &retCode) {
         redi::ipstream proc(cmd);
 
         std::string output(pstrm_iter(proc.rdbuf()), pstrm_iter());
