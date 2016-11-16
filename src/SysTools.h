@@ -3,6 +3,7 @@
 //
 #pragma once
 
+#include "helpers.h"
 #include <ios>
 #include <cctype>
 #include <string>
@@ -13,7 +14,7 @@ typedef std::istreambuf_iterator<char> pstrm_iter;
 
 class SysTools {
 public:
-    std::string runCmd(const std::string cmd) const {
+    static std::string runCmd(const std::string cmd) const {
         redi::ipstream proc(cmd);
 
         std::string output(pstrm_iter(proc.rdbuf()), pstrm_iter());
@@ -21,7 +22,7 @@ public:
         return trim(output);
     }
 
-    std::string runCmd(const std::string cmd, int &retCode) const {
+    static std::string runCmd(const std::string cmd, int &retCode) const {
         redi::ipstream proc(cmd);
 
         std::string output(pstrm_iter(proc.rdbuf()), pstrm_iter());
@@ -33,17 +34,6 @@ public:
         }
 
         return trim(output);
-    }
-private:
-    inline std::string trim(const std::string &s) const
-    {
-        auto wsfront = std::find_if_not(s.begin(),s.end(), [](int c){return std::isspace(c);});
-        return std::string(wsfront,
-                           std::find_if_not(
-                                   s.rbegin(),
-                                   std::string::const_reverse_iterator(wsfront),
-                                   [](int c){return std::isspace(c);}).base()
-        );
     }
 };
 
