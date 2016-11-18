@@ -64,14 +64,27 @@ namespace CSAOpt {
 
                 std::vector<std::string> args;
 
-                std::string token;
-                std::istringstream ss(trim(line));
+                std::string trimmedLine = trim(line);
 
-                while (std::getline(ss, token, ' ')) {
-                    args.push_back(trim(token));
+                if(trimmedLine.empty()) {
+                    continue;
                 }
 
-                this->manager.handleInteractiveCommand(args[0], args);
+                std::string token;
+                std::istringstream ss(trimmedLine);
+
+                while (std::getline(ss, token, ' ')) {
+                    std::string trimmed = trim(token);
+                    if(!trimmed.empty()) {
+                        args.push_back(trim(token));
+                    }
+                }
+
+                bool doContinue = this->manager.handleInteractiveCommand(args[0], args);
+
+                if(!doContinue) {
+                    this->abort();
+                }
             }
         }
 
