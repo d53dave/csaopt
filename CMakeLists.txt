@@ -67,7 +67,7 @@ set(SOURCE_FILES
         src/AWS/Utils.h
         src/InteractiveShell.cpp
         src/InteractiveShell.h
-        src/Manager/ModelValidator.h)
+        src/Manager/ModelValidator.h src/Manager/ModelBuilder.h src/Manager/ModelBuilder.cpp src/Manager/ManagedModel.h)
 
 
 add_executable(csaopt ${SOURCE_FILES})
