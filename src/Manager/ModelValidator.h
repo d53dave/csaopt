@@ -5,38 +5,63 @@
 #pragma once
 
 #include <string>
+#include "ModelBuilder.h"
 #include "../SysTools.h"
 #include "../Config.h"
 
 namespace CSAOpt {
     class ModelValidator {
     public:
-        static bool isValid(std::string const &impl, std::string const &workingDirectory) {
+        static std::pair<bool, ManagedModel> validate(std::string const &implPath, std::string const &workingDir) {
+            // TODO check if absolute path, i.e. begins with / or ~
             auto logger = spdlog::get(Config::loggerName());
 
+            std::string  implPathAbs = relativePathToAbsolute(implPath);
+
+
+
+            if(!file_exists(implPathAbs)) {
+                ManagedModel model;
+                model.modelFilePath = implPathAbs;
+                model.success = false;
+                logger->error("Cannot read model implementation file at {}", implPathAbs);
+                return {false, model};
+            }
+
+
+            std::string createFolderIfNotExist = fmt::format("mkdir -p {}", workingDir);
+
             int retCode;
-            std::string modelPath = Config::getModelSrcPath();
+            std::string mkWorkingDirOutput = SysTools::runCmdGetCerr(createFolderIfNotExist, retCode);
+            if (retCode != 0) {
+                ManagedModel model;
+                model.modelFilePath = implPathAbs;
+                model.success = false;
+                model.errorMessage = mkWorkingDirOutput;
+                logger->error("Could not prepare validation: {}", mkWorkingDirOutput);
+                return {false, model};
+            }
+            std::string  workingDirAbs = relativePathToAbsolute(workingDir);
+
             // copy model folder to working directory
-            std::string copyDirCmd = string_format("cp -r $%s/include $%s/src/* %s %s", modelPath.c_str(),
-                                                   modelPath.c_str(), impl.c_str(),
-                                                   workingDirectory.c_str());
+            std::string modelPath = relativePathToAbsolute(Config::getModelSrcPath());
+            std::string copyDirCmd = fmt::format("cp -r {}/include {}/src/* {} {}", modelPath,
+                                                   modelPath, implPathAbs,
+                                                   workingDirAbs);
             std::string copyDirOutput = SysTools::runCmdGetCerr(copyDirCmd, retCode);
 
             if (retCode != 0) {
+                ManagedModel model;
+                model.modelFilePath = implPathAbs;
+                model.success = false;
+                model.errorMessage = copyDirOutput;
                 logger->error("Could not prepare validation: {}", copyDirOutput);
+                return {false, model};
             }
 
-            // build gcc command
-            std::string compilerCmd = string_format("g++ -std=c++11 %s -Iinclude -c", getFilenameFromPath(impl).c_str());
-
-            // run and capture output
-            std::string compilerOutput = SysTools::runCmdGetCerr(compilerCmd, retCode);
-
-            if (retCode != 0) {
-                logger->error("Could not prepare validation: {}", compilerOutput);
-            }
-
-            return true;
+            auto model = ModelBuilder().buildModel(implPathAbs, workingDirAbs);
+            model.name = getFilenameWithoutExtension(implPathAbs);
+            return {model.success, model};
         }
     };
 }
