@@ -64,7 +64,10 @@ namespace CSAOpt {
         }
 
         static std::string get(std::string &key) {
-            return config[key];
+            if(config.count(key) > 1) {
+                return config[key];
+            }
+            return "";
         }
 
         static std::string get(std::string &&key) {
