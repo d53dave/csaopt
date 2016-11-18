@@ -9,6 +9,7 @@
 #include "../OptimizationJob.h"
 #include "../AWS/AWSTools.h"
 #include "../AnsibleTools.h"
+#include "ManagedModel.h"
 #include <Target.h>
 #include <map>
 
@@ -16,11 +17,6 @@ namespace CSAOpt {
 
     class CSAOptManager {
     public:
-        typedef struct {
-            std::string implPath;
-            std::string targetPath;
-        } OptModel;
-
         static CSAOptManager& getInstance()
         {
             static CSAOptManager instance; // Guaranteed to be destroyed.
@@ -28,7 +24,7 @@ namespace CSAOpt {
             return instance;
         }
 
-        void handleInteractiveCommand(std::string command, std::vector<std::string> args);
+        bool handleInteractiveCommand(std::string command, std::vector<std::string> args);
         void handleBatchStart();
 
 
@@ -56,7 +52,14 @@ namespace CSAOpt {
         std::shared_ptr<AWSTools> awsTools;
         std::shared_ptr<AnsibleTools> ansibleTools;
 
-        std::map<std::string, OptModel> loadedModels;
+        std::map<std::string, ManagedModel> loadedModels;
+
+        bool interactiveHandleGet(std::vector<std::string> args);
+        bool interactiveHandleLoad(std::vector<std::string> args);
+        bool interactiveHandleSet(std::vector<std::string> args);
+        bool interactiveHandleStart(std::vector<std::string> args);
+        bool interactiveHandleAbort(std::vector<std::string> args);
+        bool interactiveHandleDryrun(std::vector<std::string> args);
 
         ~CSAOptManager() {
 

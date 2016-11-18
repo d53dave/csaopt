@@ -5,45 +5,111 @@
 #include "CSAOptManager.h"
 #include "ModelValidator.h"
 #include <uuid/uuid.h>
+#include <ctime>
 
 namespace CSAOpt {
 
+    bool CSAOptManager::interactiveHandleLoad(std::vector<std::string> args) {
+        bool doContinue = true;
+        if (args.size() < 3) {
+            logger->error("The load command expects at least 2 arguments.");
+            return doContinue;
+        }
 
-    void CSAOptManager::handleInteractiveCommand(std::string command, std::vector<std::string> args) {
-        if (command == "set") {
+        std::string load = args[1];
+        if (load == "model") {
+            std::string implPath = args[2];
+            std::string key = getFilenameWithoutExtension(implPath);
 
-            logger->info("OK");
-        } else if (command == "get") {
-            if(args[1] == "all") {
-               logger->info(Config::getAll());
-            } else if(args.size() > 0 && args[1].size() > 0) {
-                std::string val = Config::get(args[1]);
-                if(val.length() > 0) {
-                    logger->info("{} = {}", args[1], val);
+
+            std::string timestamp = std::to_string(std::time(nullptr));
+
+            auto successAndModel = ModelValidator::validate(implPath,
+                                                            ("~/.csaopt/workingdir" + timestamp));
+            if (successAndModel.first) {
+                logger->info("{} loaded successfully", successAndModel.second);
+                loadedModels[key] = successAndModel.second;
+            } else {
+                logger->error("Model [file={}] could not be loaded", successAndModel.second.modelFilePath);
+            }
+
+        } else if (load == "config") {
+
+        } else {
+            logger->error("Unrecognized load command: {}", load);
+        }
+        return doContinue;
+    }
+
+    bool CSAOptManager::interactiveHandleGet(std::vector<std::string> args) {
+        bool doContinue = true;
+        if (args.size() < 3) {
+            logger->error("The get command expects at least 2 arguments.");
+            return doContinue;
+        }
+
+        if(args[1] == "config") {
+            if (args[2] == "all") {
+                logger->info(Config::getAll());
+            } else if (args.size() > 2 && args[2].size() > 0) {
+                std::string val = Config::get(args[2]);
+                if (val.length() > 0) {
+                    logger->info("{} = {}", args[2], val);
                 } else {
-                    logger->warn("{} is not defined", args[1]);
+                    logger->warn("{} is not defined", args[2]);
                 }
             } else {
                 logger->warn("No identifier provided");
             }
+        } else if(args[1] == "model") {
+            if (args[2] == "all") {
+                if(this->loadedModels.empty()) {
+                    logger->warn("No loaded models");
+                    return doContinue;
+                }
 
-        } else if (command == "loadModel") {
-            if(args.size() < 3) {
-               logger->warn("loadOpt expects two parameters: the optimization class and the target class");
+                std::stringstream ss;
+                for(auto &&kvp : this->loadedModels) {
+                    ss << kvp.second << std::endl;
+                }
+                logger->info(ss.str());
+            } else if (args.size() > 2 && args[2].size() > 0) {
+                std::string modelname = args[2];
+                if (this->loadedModels.count(modelname) > 0) {
+                    logger->info("{}", this->loadedModels[modelname]);
+                } else {
+                    logger->warn("{} is not loaded.", args[2]);
+                }
+            } else {
+                logger->warn("No identifier provided.");
             }
-            std::string implPath = trim(args[1]);
-            std::string key = getFilenameWithoutExtension(trim(implPath));
+        } else {
+            logger->error("Unrecognized option {} for command {}", args[1], args[2]);
+        }
+        return doContinue;
+    }
 
-            loadedModels[key] = {implPath, ""};
 
-            ModelValidator::isValid(implPath, "~/.csaopt/workingdir");
+
+    bool CSAOptManager::handleInteractiveCommand(std::string command, std::vector<std::string> args) {
+        bool doContinue = true;
+        if (command == "set") {
+
+            logger->info("OK");
+
+        } else if (command == "help") {
+
+        } else if (command == "get") {
+            return interactiveHandleGet(args);
+        } else if (command == "load") {
+            return interactiveHandleLoad(args);
         } else if (command == "exit") {
-
-            logger->info("Invalid command: " + command);
+            doContinue = false;
         } else {
             // command not found
             logger->error("Invalid command: " + command);
         }
+        return doContinue;
     }
 
 
