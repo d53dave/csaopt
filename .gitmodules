@@ -1,9 +1,3 @@
-[submodule "worker"]
-	path = worker
-	url = https://github.com/d53dave/csaopt-worker.git
-[submodule "msgqueue"]
-	path = msgqueue
-	url = https://github.com/d53dave/csaopt-zmq.git
 [submodule "model"]
 	path = model
 	url = https://github.com/d53dave/csaopt-model
