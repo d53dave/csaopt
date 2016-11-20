@@ -49,7 +49,7 @@
      git: repo={{ git_repo }} dest=~/msgqueue version=master accept_hostkey=yes
 
    - name: build project
-     shell: cmake . && make csaopt-tidings csaopt_zmq
+     shell: cmake . && make
      args:
        chdir: ~/msgqueue/
      register: compiled
