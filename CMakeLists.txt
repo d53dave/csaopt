@@ -18,7 +18,7 @@ set(AWS_LIB_BASE /usr/local/lib/)
 # Include dir
 find_path(AWS_SDK_CPP_INCLUDE_DIR
         NAMES Aws.h
-        PATHS ${AWS_CPP_BASE} ${AWS_CPP_BASE_LINUX})
+        PATHS ${AWS_CPP_BASE} ${AWS_CPP_BASE})
 
 find_library(AWS_SDK_CPP_CORE_LIBRARY
         NAMES libaws-cpp-sdk-core

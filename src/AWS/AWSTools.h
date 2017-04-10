@@ -11,8 +11,8 @@
 #include <aws/core/Aws.h>
 #include "../SysTools.h"
 #include <spdlog/spdlog.h>
-#include "../config.hpp"
 #include "CSAOptInstance.h"
+#include "../Config.h"
 
 #pragma once
 namespace CSAOpt {
@@ -94,7 +94,7 @@ namespace CSAOpt {
         WorkingSet startInstances(int instanceCount, Aws::EC2::Model::InstanceType instanceType,
                                             const Aws::EC2::EC2Client &client);
 
-        std::map<InstanceId, std::string> getInstanceAddresses(const WorkingSet &instances,
+        std::map<InstanceId, Aws::String> getInstanceAddresses(const WorkingSet &instances,
                                                                Aws::EC2::EC2Client &client) const;
 
         void shutdownInstances(std::map<Aws::String, std::string> instanceIps, Aws::EC2::EC2Client &client);

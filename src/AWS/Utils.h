@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <random>
 #include "CSAOptInstance.h"
 
 
@@ -47,17 +48,18 @@ namespace CSAOpt {
         CSAOptInstance inst;
         inst.id = ec2Instance.GetInstanceId();
         inst.state = mapState(ec2Instance.GetState());
+        return inst;
     }
 
      inline Aws::EC2::Model::InstanceType mapType(std::string type) {
         if(type == "m3.medium") {
             return Aws::EC2::Model::InstanceType::m3_medium;
-        } else if (type == "t2.small") {
-            return Aws::EC2::Model::InstanceType::t2_small;
         } else if (type == "t2.micro") {
             return Aws::EC2::Model::InstanceType::t2_micro;
         } else if (type == "g2.2xlarge") {
             return  Aws::EC2::Model::InstanceType::g2_2xlarge;
+        } else {
+            return Aws::EC2::Model::InstanceType::t2_small;
         }
     }
 

@@ -23,7 +23,6 @@
 
 namespace CSAOpt {
 
-
     AWSTools::AWSTools(const std::string &_awsAccessKey, const std::string &_awsSecretAccessKey,
                        const AWSRegion _region, size_t _instanceCount)
             : awsAccessKey(_awsAccessKey),
@@ -82,9 +81,10 @@ namespace CSAOpt {
             }
         } else {
             auto error = runInstances.GetError();
-            this->_logger->error("RunInstances call failed with error {} and message {}",
-                                 error.GetExceptionName(), error.GetMessage());
-            throw std::runtime_error("RunInstances Error while staring instances: " + error.GetMessage());
+            std::string msg = fmt::format("RunInstances call failed with error {} and message {}",
+            error.GetExceptionName().c_str(), error.GetMessage().c_str());
+            this->_logger->error(msg);
+            throw std::runtime_error(msg);
         }
 
         return instances;
@@ -93,16 +93,16 @@ namespace CSAOpt {
     std::string AWSTools::createSecGroup(std::string name, Aws::EC2::EC2Client &client) {
         Aws::EC2::Model::CreateSecurityGroupRequest createSecurityGroupRequest;
 
-        auto secGroupResponse = client.CreateSecurityGroup(createSecurityGroupRequest.WithGroupName(name));
+        auto secGroupResponse = client.CreateSecurityGroup(createSecurityGroupRequest.WithGroupName(name.c_str()));
 
         if (secGroupResponse.IsSuccess()) {
-            return secGroupResponse.GetResult().GetGroupId();
+            return secGroupResponse.GetResult().GetGroupId().c_str();
         } else {
             auto error = secGroupResponse.GetError();
-            this->_logger->error("CreateSecurityGroup call failed with error {} and message {}",
-                                 error.GetExceptionName(), error.GetMessage());
-            throw std::runtime_error("CreateSecurityGroup call failed with error '" + error.GetExceptionName()
-                                     + "' and message: " + error.GetMessage());
+            std::string msg = fmt::format("CreateSecurityGroup call failed with error {} and message {}",
+                    error.GetExceptionName().c_str(), error.GetMessage().c_str());
+            this->_logger->error(msg);
+            throw std::runtime_error(msg);
         }
     }
 
@@ -125,16 +125,16 @@ namespace CSAOpt {
 
         Aws::EC2::Model::CreateKeyPairRequest createKeyPairRequest;
 
-        auto keyPairResponse = client.CreateKeyPair(createKeyPairRequest.WithKeyName(name));
+        auto keyPairResponse = client.CreateKeyPair(createKeyPairRequest.WithKeyName(name.c_str()));
 
         if (keyPairResponse.IsSuccess()) {
-            return keyPairResponse.GetResult().GetKeyMaterial();
+            return keyPairResponse.GetResult().GetKeyMaterial().c_str();
         } else {
             auto error = keyPairResponse.GetError();
-            this->_logger->error("CreateKeyPair call failed with error {} and message {}",
-                                 error.GetExceptionName(), error.GetMessage());
-            throw std::runtime_error("CreateKeyPair call failed with error '" + error.GetExceptionName()
-                                     + "' and message: " + error.GetMessage());
+            std::string msg = fmt::format("CreateKeyPair call failed with error {} and message {}",
+            error.GetExceptionName().c_str(), error.GetMessage().c_str());
+            this->_logger->error(msg);
+            throw std::runtime_error(msg);
         }
     }
 
@@ -142,9 +142,15 @@ namespace CSAOpt {
         return workingSet;
     }
 
-    void AWSTools::waitUntilRunning(const std::vector<Aws::String> instanceIds, Aws::EC2::EC2Client &client) const {
+    void AWSTools::waitUntilRunning(std::vector<Aws::String> instanceIds, Aws::EC2::EC2Client &client) const {
         Aws::EC2::Model::DescribeInstanceStatusRequest instanceStatusRequest;
-        instanceStatusRequest.SetInstanceIds(instanceIds);
+
+        Aws::Vector<Aws::String> ids;
+        for(auto &&id : instanceIds) {
+            ids.push_back(id);
+        }
+
+        instanceStatusRequest.SetInstanceIds(ids);
 
         auto describeStatuses = client.DescribeInstanceStatus(instanceStatusRequest);
 
@@ -169,16 +175,17 @@ namespace CSAOpt {
             }
         } else {
             auto error = describeStatuses.GetError();
-            this->_logger->error("DescribeInstanceStatus call failed with error {} and message {}",
-                                 error.GetExceptionName(), error.GetMessage());
-            throw std::runtime_error("DescribeInstanceStatus call failed with error '" + error.GetExceptionName()
-                                     + "' and message: " + error.GetMessage());
+            std::string msg = fmt::format("DescribeInstanceStatus call failed with error '{}' and message: {}",
+            error.GetExceptionName().c_str(), error.GetMessage().c_str());
+            this->_logger->error(msg);
+
+            throw std::runtime_error(msg);
         }
     }
 
-    std::map<InstanceId, std::string>  AWSTools::getInstanceAddresses(const WorkingSet &instances,
+    std::map<InstanceId, Aws::String>  AWSTools::getInstanceAddresses(const WorkingSet &instances,
                                                                       Aws::EC2::EC2Client &client) const {
-        std::vector<std::string> instanceIds;
+        Aws::Vector<InstanceId> instanceIds;
 
         for (auto &&instance : instances) {
             instanceIds.push_back(instance.first); // first is InstanceId, second is the actual instance
@@ -187,7 +194,7 @@ namespace CSAOpt {
         Aws::EC2::Model::DescribeInstancesRequest describeInstancesRequest;
         describeInstancesRequest.WithInstanceIds(instanceIds);
 
-        std::map<InstanceId, std::string> instanceIps;
+        std::map<InstanceId, Aws::String> instanceIps;
 
         while (instanceIps.size() < instanceIds.size()) {
             auto describeResult = client.DescribeInstances(describeInstancesRequest);
@@ -200,7 +207,8 @@ namespace CSAOpt {
                     for (auto &instance : reservation.GetInstances()) {
 
                         instance.GetPublicIpAddress();
-                        instanceIps.emplace(instance.GetInstanceId(), instance.GetPublicIpAddress());
+                        std::pair<InstanceId, Aws::String> instanceWithIp(instance.GetInstanceId(), instance.GetPublicIpAddress());
+                        instanceIps.emplace(instanceWithIp);
                         std::this_thread::sleep_for(std::chrono::seconds(5));
                     }
                 }
@@ -209,8 +217,10 @@ namespace CSAOpt {
                 auto error = describeResult.GetError();
                 std::cerr << "DescribeInstances call failed with error" << error.GetExceptionName()
                 << " and message " << error.GetMessage() << std::endl;
-                throw std::runtime_error("DescribeInstances call failed with error '" + error.GetExceptionName()
-                                         + "' and message: " + error.GetMessage());
+                std::string msg = fmt::format("DescribeInstances call failed with error '{}' and message: {}",
+                                              error.GetExceptionName().c_str(), error.GetMessage().c_str());
+
+                throw std::runtime_error(msg);
 
             }
         }
@@ -283,7 +293,7 @@ namespace CSAOpt {
         bool printNotice = false;
         for (auto &&kvp : this->workingSet) {
             if (kvp.second.state == CSAOptInstance::InstanceState::running) {
-                _logger->warn("AWSTools is shutting down but instance with id {} is still running.", kvp.first);
+                _logger->warn("AWSTools is shutting down but instance with id {} is still running.", kvp.first.c_str());
                 printNotice = true;
             }
         }
@@ -306,7 +316,7 @@ namespace CSAOpt {
 
 
     void AWSTools::shutdown(Aws::EC2::EC2Client &client) {
-        std::vector<InstanceId> idsToShutdown;
+        Aws::Vector<InstanceId> idsToShutdown;
         if (useSeparateMachineAsMsgQueue) {
             idsToShutdown.push_back(this->getMessageQueue().id);
         }
@@ -329,8 +339,9 @@ namespace CSAOpt {
                 auto error = terminateResponse.GetError();
                 std::cerr << "TerminateInstances call failed with error" << error.GetExceptionName()
                 << " and message " << error.GetMessage() << std::endl;
-                throw std::runtime_error("TerminateInstances call failed with error '" + error.GetExceptionName()
-                                         + "' and message: " + error.GetMessage());
+                std::string msg = fmt::format("TerminateInstances call failed with error '{}' and message {}",
+                                              error.GetExceptionName().c_str(), error.GetMessage().c_str());
+                throw std::runtime_error(msg);
             }
         }
     }

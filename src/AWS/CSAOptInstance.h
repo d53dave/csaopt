@@ -5,10 +5,11 @@
 #pragma once
 
 #include <string>
+#include <aws/core/utils/memory/stl/AWSString.h>
 
 namespace CSAOpt {
 
-    typedef std::string InstanceId;
+    typedef Aws::String InstanceId;
 
     class CSAOptInstance {
     public:
