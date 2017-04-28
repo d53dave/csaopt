@@ -6,7 +6,7 @@
 
 #include "Target.h"
 
-class UserDefinedTarget: public CGOpt::Target {
+class UserDefinedTarget: public CSAOpt::Target {
 public:
     int getAnswer();
 
