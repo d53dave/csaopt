@@ -11,7 +11,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModu
 
 include(LibFindMacros)
 
-set(AWS_CPP_BASE /usr/local/Cellar/aws-sdk-cpp/0.12.11/) #MACOS
+set(AWS_CPP_BASE /usr/local/Cellar/aws-sdk-cpp/1.0.101/) #MACOS
 set(AWS_CPP_BASE_LINUX /usr/local/include/aws/core)
 set(AWS_LIB_BASE /usr/local/lib/)
 
@@ -67,7 +67,7 @@ set(SOURCE_FILES
         src/AWS/Utils.h
         src/InteractiveShell.cpp
         src/InteractiveShell.h
-        src/Manager/ModelValidator.h src/Manager/ModelBuilder.h src/Manager/ModelBuilder.cpp src/Manager/ManagedModel.h)
+        src/Manager/ModelValidator.h src/Manager/ModelBuilder.h src/Manager/ModelBuilder.cpp src/Manager/ManagedModel.h src/Filesystem/DirectoryScanner.h)
 
 
 add_executable(csaopt ${SOURCE_FILES})
@@ -81,10 +81,13 @@ enable_testing()
 add_executable(SysToolsTest test/SysToolsTest.cpp src/SysTools.h)
 add_test(NAME SysToolsTest COMMAND SysToolsTest)
 
+add_executable(DirectoryScannerTest test/DirectoryScannerTest.cpp src/Filesystem/DirectoryScanner.h)
+add_test(NAME DirectoryScannerTest COMMAND DirectoryScannerTest)
+
 add_executable(ConfigTest test/ConfigTest.cpp src/Config.h src/Config.cpp)
 add_test(NAME ConfigTest COMMAND ConfigTest)
 
-add_executable(AnsibleToolsTest test/AnsibleToolsTest.cpp src/AnsibleTools.h src/AnsibleTools.cpp)
+add_executable(AnsibleToolsTest test/AnsibleToolsTest.cpp src/AnsibleTools.h src/AnsibleTools.cpp test/DirectoryScannerTest.cpp test/DirectoryScannerTest.h)
 add_test(NAME AnsibleToolsTest COMMAND AnsibleToolsTest)
 
 add_executable(AWSToolsTest test/AWSToolsTest.cpp src/AWS/AWSTools.h src/AWS/AWSTools.cpp src/SysTools.h)
