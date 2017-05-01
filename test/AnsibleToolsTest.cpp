@@ -42,17 +42,18 @@ TEST_CASE("AnsibleToolsTest", "[Ansible]"){
         CSAOpt::AnsibleTools ansibleTools;
         ansibleTools.setHostsFilePath(hostsFilePath);
 
-        std::vector<CSAOpt::AWSTools::AWSInstance> instanceVector;
-        instanceVector.push_back({"testid1", "1.2.3.4", "dnsname1", CSAOpt::AWSTools::running, true, true, false});
-        instanceVector.push_back({"msgqueueworker", "1.2.3.5", "dnsname2", CSAOpt::AWSTools::running, true, true, true});
-        instanceVector.push_back({"testid3", "1.2.3.6", "dnsname3", CSAOpt::AWSTools::running, true, true, false});
+        using CSAOpt::CSAOptInstance;
+        std::vector<CSAOptInstance> instanceVector;
+        instanceVector.push_back(CSAOptInstance{"testid1", "1.2.3.4", "dnsname1", CSAOptInstance::InstanceState::running, true, true});
+        instanceVector.push_back(CSAOptInstance{"msgqueueworker", "1.2.3.5", "dnsname2", CSAOptInstance::InstanceState::running, true, true});
+        instanceVector.push_back(CSAOptInstance{"testid3", "1.2.3.6", "dnsname3", CSAOptInstance::InstanceState::running, true, true});
 
         std::vector<std::string> ipAddresses;
 
         std::transform(instanceVector.begin(),
                        instanceVector.end(),
                        std::back_inserter(ipAddresses),
-                       [](CSAOpt::AWSTools::AWSInstance i) {return i.publicIp;} );
+                       [](CSAOpt::CSAOptInstance i) {return i.publicIp;} );
 
         std::string messageQueueIp = instanceVector[1].publicIp;
 
@@ -65,10 +66,11 @@ TEST_CASE("AnsibleToolsTest", "[Ansible]"){
         CSAOpt::AnsibleTools ansibleTools;
         ansibleTools.setHostsFilePath(hostsFilePath);
 
-        std::vector<CSAOpt::AWSTools::AWSInstance> instanceVector;
-        instanceVector.push_back({"testid4", "1.2.3.7", "dnsname4", CSAOpt::AWSTools::running, true, true, false});
-        instanceVector.push_back({"testid5", "1.2.3.8", "dnsname5", CSAOpt::AWSTools::running, true, true, false});
-        instanceVector.push_back({"msgqueue", "1.2.3.9", "dnsname6", CSAOpt::AWSTools::running, true, false, true});
+        using CSAOpt::CSAOptInstance;
+        std::vector<CSAOptInstance> instanceVector;
+        instanceVector.push_back(CSAOptInstance{"testid4", "1.2.3.7", "dnsname4", CSAOptInstance::InstanceState::running, true, true});
+        instanceVector.push_back(CSAOptInstance{"testid5", "1.2.3.8", "dnsname5", CSAOptInstance::InstanceState::running, true, true});
+        instanceVector.push_back(CSAOptInstance{"msgqueue", "1.2.3.9", "dnsname6",CSAOptInstance::InstanceState::running, true, false});
 
 
         std::vector<std::string> ipAddresses;
@@ -76,7 +78,7 @@ TEST_CASE("AnsibleToolsTest", "[Ansible]"){
         std::transform(instanceVector.begin(),
                        instanceVector.end(),
                        std::back_inserter(ipAddresses),
-                       [](CSAOpt::AWSTools::AWSInstance i) {return i.publicIp;} );
+                       [](CSAOptInstance i) {return i.publicIp;} );
 
         std::string messageQueueIp = instanceVector[2].publicIp;
 
