@@ -16,16 +16,18 @@ namespace CSAOpt {
         std::string jobId;
         std::shared_ptr<Optimization> optimization;
         std::shared_ptr<Target> target;
+
         std::string getTargetClassFile();
+
         std::string getOptClassFile();
 
         std::chrono::milliseconds lastResultTimeStamp;
 
     private:
-        std::string demangle(const char* name);
+        std::string demangle(const char *name);
 
-        template <class T>
-        std::string type(const T& t) {
+        template<class T>
+        std::string type(const T &t) {
             return demangle(typeid(t).name());
         }
     };

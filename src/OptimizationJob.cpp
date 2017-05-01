@@ -33,9 +33,9 @@ std::string CSAOpt::OptimizationJob::demangle(const char* name) {
 
 
 std::string CSAOpt::OptimizationJob::getTargetClassFile() {
-    return type(*target.get());
+    return type(target.get());
 }
 
 std::string CSAOpt::OptimizationJob::getOptClassFile() {
-    return type(*optimization.get());
+    return type(optimization.get());
 }
