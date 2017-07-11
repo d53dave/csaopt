@@ -14,6 +14,14 @@ TBD
 
 TBD
 
+## Development
+
+Currently, the python development is based on 
+[pipenv](https://github.com/kennethreitz/pipenv) for 
+dependencies and the virtual environment. The C++ parts are 
+developed using CMake.
+
+
 ## Change History
 
 > 0.1.0 Change to Python
