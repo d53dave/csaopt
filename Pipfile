@@ -1,0 +1,19 @@
+[[source]]
+verify_ssl = true
+url = "https://pypi.python.org/simple"
+
+[packages]
+pyhocon = "*"
+boto3 = "*"
+ansible = "*"
+arrow = "*"
+
+[dev-packages]
+pytest = "*"
+pytest-cov = "*"
+Sphinx = "*"
+sphinxcontrib-napoleon = "*"
+coverage = "*"
+coveralls = "*"
+mypy = "*"
+bumpversion = "*"
