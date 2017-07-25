@@ -2,12 +2,6 @@
 verify_ssl = true
 url = "https://pypi.python.org/simple"
 
-[packages]
-pyhocon = "*"
-boto3 = "*"
-ansible = "*"
-arrow = "*"
-
 [dev-packages]
 pytest = "*"
 pytest-cov = "*"
@@ -17,3 +11,12 @@ coverage = "*"
 coveralls = "*"
 mypy = "*"
 bumpversion = "*"
+flake8 = "*"
+pytest-timeout = "*"
+
+[packages]
+pyhocon = "*"
+boto3 = "*"
+ansible = "*"
+arrow = "*"
+click = "*"
