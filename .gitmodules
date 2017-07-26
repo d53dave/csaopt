@@ -1,3 +1,9 @@
 [submodule "model"]
 	path = lib/csaopt-model
 	url = https://github.com/d53dave/csaopt-model
+[submodule "app/model"]
+	path = app/model
+	url = https://github.com/d53dave/csaopt-model
+[submodule "app/msgqclient/capnp"]
+	path = app/msgqclient/capnp
+	url = https://github.com/d53dave/csaopt-tidings
