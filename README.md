@@ -8,7 +8,7 @@ TBD
 
 ## Configuration
 
-TBD
+The main configuration file (i.e. configuration for running the software) is located in `conf/csaopt.conf`. In addition, there is an internal configuration file under `app/internal/csaopt-internal.conf`, which does not need to be touched unter normal circumstances. A detailed description and listing of supported configuration will follow here.
 
 ## Requirements
 
