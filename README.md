@@ -1,4 +1,4 @@
-# CSAOpt - A Cloud GPU based Simulated Annealing Optimization Framework. [![Build Status](https://travis-ci.org/d53dave/csaopt.svg?branch=master)](https://travis-ci.org/d53dave/csaopt)
+# CSAOpt - A Cloud GPU based Simulated Annealing Optimization Framework. [![Build Status](https://travis-ci.org/d53dave/csaopt.svg?branch=master)](https://travis-ci.org/d53dave/csaopt) [![Coverage Status](https://coveralls.io/repos/github/d53dave/csaopt/badge.svg?branch=master)](https://coveralls.io/github/d53dave/csaopt?branch=master)
 
 The main premise of this framework is that a user provides the implementation for an abstract base class that describes the *standard* way of doing Simulated Annealing while CSAOpt takes care of starting, configuring and running a massively parallel flavor of Simulated Annealing on GPUs hosted in the cloud.
 
@@ -8,7 +8,7 @@ TBD
 
 ## Configuration
 
-The main configuration file (i.e. configuration for running the software) is located in `conf/csaopt.conf`. In addition, there is an internal configuration file under `app/internal/csaopt-internal.conf`, which does not need to be touched unter normal circumstances. A detailed description and listing of supported configuration will follow here.
+The main configuration (i.e. configuration for running the software) is located in `conf/csaopt.conf`. In addition, there is an internal configuration file under `app/internal/csaopt-internal.conf`, which does not need to be modified under normal circumstances. A detailed description and listing of supported configuration will follow here.
 
 ## Requirements
 
