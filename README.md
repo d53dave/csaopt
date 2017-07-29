@@ -24,7 +24,7 @@ Required software:
 
 If you choose to run `csaopt` without `pipenv` and a virtual environment, you need to make sure you manually install the required Python packages, e.g. by using `pip`. You can find the exact list of dependencies in the `[packages]` section of the [Pipfile](Pipfile), and the required versions in the [Pipfile.lock](Pipfile.lock).
 
-A special note regarding zmq. The guys from zeromq pulled off a nice stunt, as the [pyzmq](https://github.com/zeromq/pyzmq) package will try to build it's own libzmq Python extension. Make sure to manually install [Cython](http://cython.org/) if you need to rely on pyzmq building the extension.
+A special note regarding `zmq`. The guys from `zeromq` pulled off a nice stunt, as the [pyzmq](https://github.com/zeromq/pyzmq) package will try to build it's own `libzmq` Python extension if it doesn't detect `libzmq` on your system. Make sure to manually install [Cython](http://cython.org/) if you need to rely on `pyzmq` building the extension.
 
 ## Development
 
