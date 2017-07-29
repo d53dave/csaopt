@@ -60,3 +60,6 @@ doc/
 # Build dir
 build/
 cmake-build-debug/
+
+# vs code
+.vscode/
