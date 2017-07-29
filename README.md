@@ -8,11 +8,23 @@ TBD
 
 ## Configuration
 
-The main configuration (i.e. configuration for running the software) is located in `conf/csaopt.conf`. In addition, there is an internal configuration file under `app/internal/csaopt-internal.conf`, which does not need to be modified under normal circumstances. A detailed description and listing of supported configuration will follow here.
+The configuration is based on typesafes/lightbends [HOCON](https://github.com/typesafehub/config/blob/master/HOCON.md) and integrated with the excellent [pyhocon](https://github.com/chimpler/pyhocon). The main configuration (i.e. configuration for running the software) is located in `conf/csaopt.conf`. In addition, there is an internal configuration file under `app/internal/csaopt-internal.conf`, which does not need to be modified under normal circumstances. A detailed description and listing of supported configuration will follow here.
 
 ## Requirements
 
-TBD
+This software will not run on Windows out of the box, but it might run in the [WSL](https://blogs.msdn.microsoft.com/wsl). It will probably run on MacOS, but this is untested as of now. If you want to run it on a recent Linux distribution, you are in luck. Development was done on [ElementaryOS](https://elementary.io/), while the deployed AWS intances are based on Ubuntu Server 16.04 LTS.
+
+Required software:
+- Python 3.5 or higher
+- [Pipenv](http://docs.pipenv.org/en/latest/) is not strictly required, but recommended
+- [AWS](https://aws.amazon.com/) credentials or a local GPU capable of running [CUDA](https://www.geforce.com/hardware/technology/cuda) computations.
+- [GCC](https://gcc.gnu.org/) 4.9 or later ([clang](https://clang.llvm.org/) is not yet supported, but I will be looking into that)
+- [CMake](https://cmake.org/) 3.3 or higher
+- Development package for [libzmq3](https://packages.ubuntu.com/search?keywords=libzmq3-dev), from your favourite package manager.
+
+If you choose to run `csaopt` without `pipenv` and a virtual environment, you need to make sure you manually install the required Python packages, e.g. by using `pip`. You can find the exact list of dependencies in the `[packages]` section of the [Pipfile](Pipfile), and the required versions in the [Pipfile.lock](Pipfile.lock).
+
+A special note regarding zmq. The guys from zeromq pulled off a nice stunt, as the [pyzmq](https://github.com/zeromq/pyzmq) package will try to build it's own libzmq Python extension. Make sure to manually install [Cython](http://cython.org/) if you need to rely on pyzmq building the extension.
 
 ## Development
 
