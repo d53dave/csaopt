@@ -7,6 +7,3 @@
 [submodule "app/msgqclient/capnp"]
 	path = app/msgqclient/capnp
 	url = https://github.com/d53dave/csaopt-tidings
-[submodule "app/capnp"]
-	path = app/capnp
-	url = https://github.com/d53dave/csaopt-tidings
