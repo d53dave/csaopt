@@ -29,6 +29,13 @@ class AWSTools():
         self.instances = []
         self.sec_group = None
         self.private_key_path = None
+        
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.ec2.instances.filter(InstanceIds=self.instance_ids).stop()
+        self.ec2.instances.filter(InstanceIds=self.instance_ids).terminate()
 
     def _start_instances(self, count=2):
         self.instances = self.ec2.create_instances(
