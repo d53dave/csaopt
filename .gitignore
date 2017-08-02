@@ -63,3 +63,12 @@ cmake-build-debug/
 
 # vs code
 .vscode/
+
+# mypy
+.mypy_cache/
+
+# pycache
+__pycache__
+
+# caches
+.cache/
