@@ -17,6 +17,20 @@ def _get_random_string(length=8):
 
 
 class AWSTools():
+    """The AWSTools class provides an abstraction over boto3 and EC2 for the use with CSAOpt
+
+    It is intended to be used as a context manager, disposing of instances in it's __exit__()
+    call. 
+
+    Boto3 will check these environment variables for credentials:
+
+    Note: 
+        If the AWS credentials are not provided in the config file, boto3 will look into
+        the following environment variables:
+        * AWS_ACCESS_KEY_ID
+        * AWS_SECRET_ACCESS_KEY
+
+    """
     def __init__(self, config, internal_conf):
         if config['aws.secret_key'] is not None and config['aws.access_key'] is not None:
             self.ec2 = boto3.client(
