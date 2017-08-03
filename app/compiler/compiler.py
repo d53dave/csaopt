@@ -8,15 +8,16 @@ import time
 from pathlib import Path
 import logging
 
+from typing import Dict
+
 logger = logging.getLogger()
 
-# TODO: Setup flake8
 # TODO: finally set up the unit tests and travis build
-
 
 def _make_temp_dir(prefix):
     """Creates a new temporary directory. Note that it will be cleaned up once this goes out of scope"""
     return tempfile.TemporaryDirectory(prefix=prefix)
+
 
 def _output_reader(proc, outq):
     for line in iter(proc.stdout.readline, b''):
@@ -41,6 +42,7 @@ def _which(name):
 
     return None
 
+
 class ModelCompiler():
     def __init__(self, model_proj_path, conf, internal_conf):
         self.model_project_path = Path(model_proj_path).resolve()
@@ -48,7 +50,11 @@ class ModelCompiler():
         self.make_exec_path = conf['build.make_path']
         self.output_queue = queue.Queue()
         self.working_dir = _make_temp_dir('csaopt_')
-        
+        self.required_artifacts = internal_conf['build.required_artifacts']
+
+        assert self.required_artifacts is not None
+        assert len(required_artifacts) > 0
+
         exec_names = internal_conf['build.exec_names']
         configured_exec_paths = self._fill_exec_paths(names, conf)
         found_exec_paths = self._find_missing_execs(names, configured_exec_paths)
@@ -65,17 +71,18 @@ class ModelCompiler():
 
     def _find_missing_execs(names, exec_paths):
         """Uses `which`-like behaviour to find executables on $PATH"""
-        exec_without_path = [name in names if exec_paths[name] is None]
+
+        exec_without_path = [name in names if not exec_paths[name]]
         return {executable: which(executable) for executable in exec_without_path}
 
-    
     def _prepare_compilation(self, path):
-        """Runs Cmake"""
+        """Runs Cmake and """
        
         assert self.working_dir is not None
         logger.info('Preparing model build')
         logger.debug('Invoking cmake, working_dir=', self.working_dir)
-        self.compile_subproc = subprocess.Popen([self.exec_paths['cmake'], self.model_project_path],
+        self.compile_subproc = subprocess.Popen(
+                                [self.exec_paths['cmake'], self.model_project_path],
                                 cwd=self.working_dir.name,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
@@ -84,18 +91,19 @@ class ModelCompiler():
             self.compile_thread.start()
         finally:
             model_compiler.compile_subproc.terminate()
-            try:
+            try:  # TODO: Add timeouts from conf
                 model_compiler.compile_subproc.wait(timeout=self.conf[])
                 while not model_compiler.compile_out_q.empty():
                     line = model_compiler.compile_out_q.get(block=False)
-                return  model_compiler.compile_subproc.returncode;
+                return model_compiler.compile_subproc.returncode
             except subprocess.TimeoutExpired:
                 logger.error('Model build preparation step did not complete in time')
                 for line in self.output_queue:
                     logger.error(line)
 
     def _compile(self):
-        self.compile_subproc = subprocess.Popen([self.exec_paths['make'], 'j=4',
+        self.compile_subproc = subprocess.Popen(
+                                [self.exec_paths['make'], 'j4'],
                                 cwd=self.working_dir.name,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
@@ -108,7 +116,7 @@ class ModelCompiler():
                 # TODO: add verbose flag and handling
                 while not model_compiler.compile_out_q.empty():
                     line = model_compiler.compile_out_q.get(block=False)
-                return  model_compiler.compile_subproc.returncode;
+                return model_compiler.compile_subproc.returncode
             except subprocess.TimeoutExpired:
                 logger.error('Model build step did not complete in time')
                 while not model_compiler.compile_out_q.empty():
@@ -119,10 +127,18 @@ class ModelCompiler():
         self.compile_subproc.terminate()
 
     def _check_artifacts(self):
-        pass
+        for artifact in self.required_artifacts:
+            artifact_path = os.path.join(self.working_dir, artifact)
+            logger.debug('Model compiler verifying artifact {}'.format(artifact_path)))
+            if os.path.isFile(artifact_path):
+                if not os.path.getsize(artifact_path) > 0:
+                    raise AssertionError('Artifact {} was produced, but is empty'.format(artifact))
+            else:
+                raise AssertionError('Could not verify that build step produced {}'.format(artifact))
 
     def build(self):
-        
+        pass
+
 
 if __name__ == '__main__':
     cwd = os.getcwd()
