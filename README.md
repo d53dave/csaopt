@@ -58,5 +58,6 @@ including the proof of concept which was demo-ed to
 my thesis supervisor and colleagues. These versions were
 undocumented and development was sporadic. Most changes
 did not make it into version control and features
-were added and abandoned at will.
+were added and abandoned at will. The last version of the
+C++ prototype in this repo was commit [6c922f](https://github.com/d53dave/csaopt/tree/6c922f933eceb8992e9acae36f1767336c56209f).
 
