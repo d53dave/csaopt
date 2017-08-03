@@ -13,14 +13,14 @@ def _get_own_ip():
 
 
 def _get_random_string(length=8):
-    return ''.join([random.choice(string.ascii_letters + string.digits) for n in xrange(lenth)])
+    return ''.join([random.choice(string.ascii_letters + string.digits) for n in range(length)])
 
 
 class AWSTools():
     """The AWSTools class provides an abstraction over boto3 and EC2 for the use with CSAOpt
 
     It is intended to be used as a context manager, disposing of instances in it's __exit__()
-    call. 
+    call.
 
     Boto3 will check these environment variables for credentials:
 
@@ -40,16 +40,27 @@ class AWSTools():
         else:
             # This will look for the env variables
             self.ec2 = boto3.client('ec2')
+        self.region
         self.instances = []
         self.sec_group = None
         self.private_key_path = None
+        self.worker_count = config['aws.worker_count']
+        self.separate_queue_instance = config['aws.separate_queue_instance']
         
     def __enter__(self):
-        pass
+        self._create_sec_group()
+        self._create_key_pair()
+        instances = self._start_worker_instances()
+        if self.separate_queue_instance:
+            instance = self._start_queue_instance()
+            instances.append(instance)
+        
+        self.instances = instances
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.ec2.instances.filter(InstanceIds=self.instance_ids).stop()
-        self.ec2.instances.filter(InstanceIds=self.instance_ids).terminate()
+        instance_ids = [instance.id for instance in self.instances]
+        self.ec2.instances.filter(InstanceIds=instance_ids).stop()
+        self.ec2.instances.filter(InstanceIds=instance_ids).terminate()
 
     def _start_instances(self, count=2):
         self.instances = self.ec2.create_instances(
