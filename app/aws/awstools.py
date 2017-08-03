@@ -32,7 +32,7 @@ class AWSTools():
 
     """
     def __init__(self, config, internal_conf):
-        if config['aws.secret_key'] is not None and config['aws.access_key'] is not None:
+        if config['aws.secret_key'] and config['aws.access_key']:
             self.ec2 = boto3.client(
                 aws_access_key_id=config['aws.access_key'],
                 aws_secret_access_key=config['aws.secrey_key']
@@ -79,7 +79,7 @@ class AWSTools():
         return self.instances
 
     def _create_key_pair(self, key_name):
-        key = ec2.create_key_pair(KeyName=key_name)
+        key = self.ec2.create_key_pair(KeyName=key_name)
         return key
 
     def _save_key_material(self, key):
@@ -94,7 +94,7 @@ class AWSTools():
         if self.security_group_id is not None:
             try:
                 self.ec2.delete_security_group(GroupId=self.security_group_id)
-                print('Security Group Deleted')
+                logger.debug('Security Group Deleted')
             except ClientError as e:
                 logger.error('Could not remove security group: {}'.format(e))
         else:
