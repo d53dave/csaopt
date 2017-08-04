@@ -3,10 +3,10 @@ import os
 import tempfile
 import threading
 import queue
-import time
-from pathlib import Path
 import logging
+from pathlib import Path
 from pyhocon import ConfigTree
+from . import BuildResult
 
 from typing import Dict
 from typing import Optional
@@ -136,18 +136,41 @@ class ModelCompiler():
     def _terminate(self) -> None:
         self.compile_subproc.terminate()
 
-    def _check_artifacts(self) -> None:
+    def _resolve_artifacts(self) -> List[Path]:
+        artifacts = []
         for artifact in self.required_artifacts:
             artifact_path = os.path.join(self.working_dir, artifact)
             logger.debug('Model compiler verifying artifact {}'.format(artifact_path))
             if os.path.isfile(artifact_path):
-                if not os.path.getsize(artifact_path) > 0:
+                if os.path.getsize(artifact_path) > 0:
+                    artifacts.append(Path(artifact_path).resolve())
+                else:
                     raise AssertionError('Artifact {} was produced, but is empty'.format(artifact))
             else:
                 raise AssertionError('Could not verify that build step produced {}'.format(artifact))
 
-    def build(self) -> Dict[str, str]:
-        pass
+        return artifacts
+
+    def build(self) -> BuildResult:
+        errors: List[str] = []
+        artifacts: List[Path] = []
+
+        return_value = self._prepare_compilation(self.working_dir)
+
+        if return_value is not 0:
+            errors.append('Could not prepare model build: return value was {}'.format(return_value))
+
+        return_value = self._compile()
+
+        if return_value is not 0:
+            errors.append('Could not build model: return value was {}'.format(return_value))
+
+        try:
+            artifacts += self._resolve_artifacts()
+        except AssertionError as e:
+            errors.append(str(e))
+
+        return BuildResult(artifacts, errors)
 
 
 if __name__ == '__main__':
@@ -155,13 +178,7 @@ if __name__ == '__main__':
     model_dir = Path('app/model').resolve()
     print(model_dir)
     model_compiler = ModelCompiler(model_dir, {'build.cmake_path': None}, {})
-    model_compiler._prepare_compilation(None)
-    model_compiler._compile()
 
-    time.sleep(1)
-    try:
-        print('Started')
-    except queue.Empty:
-        print('Finished')
-    finally:
-        model_compiler.compile_thread.join()
+    result = model_compiler.build()
+
+    assert result.failed() is False
