@@ -6,9 +6,11 @@ import queue
 import time
 from pathlib import Path
 import logging
+from pyhocon import ConfigTree
 
 from typing import Dict
 from typing import Optional
+from typing import List
 
 logger = logging.getLogger()
 
@@ -20,7 +22,7 @@ def _make_temp_dir(prefix: str) -> tempfile.TemporaryDirectory:
     return tempfile.TemporaryDirectory(prefix=prefix)
 
 
-def _output_reader(proc, outq):
+def _output_reader(proc: subprocess.Popen, outq: queue.Queue) -> None:
     for line in iter(proc.stdout.readline, b''):
         outq.put(line.decode('utf-8'))
 
@@ -66,7 +68,7 @@ class ModelCompiler():
 
         # Todo verify that all executables have paths, die otherwise
 
-    def _fill_exec_paths(names, config):
+    def _fill_exec_paths(self, names: List[str], config: ConfigTree) -> Dict[str, str]:
         """Extracts configured paths for the required executables"""
 
         assert names is not None
@@ -74,7 +76,7 @@ class ModelCompiler():
 
         return {name: config['build.exec_paths'][name] for name in names}
 
-    def _find_missing_execs(names, exec_paths):
+    def _find_missing_execs(self, names: List[str], exec_paths: Dict[str, str]) -> Dict[str, str]:
         """Uses `which`-like behaviour to find executables on $PATH"""
 
         exec_without_path = [name for name in names if not exec_paths[name]]
@@ -144,7 +146,7 @@ class ModelCompiler():
             else:
                 raise AssertionError('Could not verify that build step produced {}'.format(artifact))
 
-    def build(self):
+    def build(self) -> Dict[str, str]:
         pass
 
 
