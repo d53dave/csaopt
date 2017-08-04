@@ -22,9 +22,15 @@ class AWSTools():
     It is intended to be used as a context manager, disposing of instances in it's __exit__()
     call.
 
+    Create IAM credentials:
+        * new IAM user with programmatic access
+        * assign to a (potentially new) group with AmazonEC2FullAccess
+        * write down and store the access key and secret key
+
+
     Boto3 will check these environment variables for credentials:
 
-    Note: 
+    Note:
         If the AWS credentials are not provided in the config file, boto3 will look into
         the following environment variables:
         * AWS_ACCESS_KEY_ID
@@ -99,9 +105,6 @@ class AWSTools():
                 logger.error('Could not remove security group: {}'.format(e))
         else:
             logger.warn('Cannot remove security group, because none was created. Skipping')
-
-    def _create_key_pair(self, name):
-        self.ec2.create_key_pair(KeyName='KEY_PAIR_NAME')
 
     def _create_sec_group(self, name):
         self.own_external_ip = _get_own_ip()
