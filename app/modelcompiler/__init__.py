@@ -1,5 +1,7 @@
 import pathlib
 
+__all__ = ['compiler']
+
 from typing import List
 
 

@@ -7,7 +7,6 @@ import logging
 from pathlib import Path
 from pyhocon import ConfigTree
 from . import BuildResult
-
 from typing import Dict
 from typing import Optional
 from typing import List
