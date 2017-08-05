@@ -13,7 +13,7 @@ before_script:
   # pyzmq has a bug that is patched using this script
   - wget -O - https://gist.githubusercontent.com/d53dave/d29cd2e75ce06650e8b875a04a0a68db/raw/6d6c8797d45df29966651ca32d1e4c5941ae2266/fix_pyzmq.sh | sh
 
-script: pipenv run py.test --cov=messagequeue -v tests
+script: pipenv run py.test --cov=app -v tests
 
 after_success:
     - if [[ $TRAVIS_PYTHON_VERSION == 3.5* ]]; then
