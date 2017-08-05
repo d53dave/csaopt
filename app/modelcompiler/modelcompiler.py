@@ -13,8 +13,6 @@ from typing import List
 
 logger = logging.getLogger()
 
-# TODO: finally set up the unit tests and travis build
-
 
 def _make_temp_dir(prefix: str) -> tempfile.TemporaryDirectory:
     """Creates a new temporary directory. Note that it will be cleaned up once this goes out of scope"""
@@ -151,8 +149,8 @@ class ModelCompiler():
         return artifacts
 
     def build(self) -> BuildResult:
-        errors: List[str] = []
-        artifacts: List[Path] = []
+        errors = []     # type List[str]
+        artifacts = []  # type List[Path]
 
         return_value = self._prepare_compilation(self.working_dir)
 
