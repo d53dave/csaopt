@@ -89,7 +89,7 @@ class ModelCompiler():
         logger.info('Preparing model build')
         logger.debug('Invoking cmake, working_dir=', self.working_dir)
         self.compile_subproc = subprocess.Popen(
-                                [self.exec_paths['cmake'], self.model_project_path],
+                                [self.exec_paths['cmake'], self.model_project_path.name],
                                 cwd=self.working_dir.name,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
