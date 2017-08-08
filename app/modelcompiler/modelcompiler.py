@@ -51,13 +51,16 @@ class ModelCompiler():
         self.output_queue = queue.Queue()
         self.working_dir = _make_temp_dir('csaopt_')
         self.required_artifacts = internal_conf['build.required_artifacts']
-        self.make_timeout = internal_conf['build.timeouts.make']
-        self.cmake_timeout = internal_conf['build.timeouts.cmake']
+        self.make_timeout = float(internal_conf['build.timeouts.make'])
+        self.cmake_timeout = float(internal_conf['build.timeouts.cmake'])
 
         assert self.required_artifacts is not None
         assert len(self.required_artifacts) > 0
 
         exec_names = internal_conf['build.exec_names']
+
+        assert len(exec_names) > 0
+
         configured_exec_paths = self._fill_exec_paths(exec_names, conf)
         found_exec_paths = self._find_missing_execs(exec_names, configured_exec_paths)
 
@@ -71,12 +74,12 @@ class ModelCompiler():
         assert names is not None
         assert config['build.exec_paths'] is not None
 
-        return {name: config['build.exec_paths'][name] for name in names}
+        return {name: config['build.exec_paths'][name] for name in names if name in config['build.exec_paths']}
 
     def _find_missing_execs(self, names: List[str], exec_paths: Dict[str, str]) -> Dict[str, str]:
         """Uses `which`-like behaviour to find executables on $PATH"""
 
-        exec_without_path = [name for name in names if not exec_paths[name]]
+        exec_without_path = [name for name in names if name not in exec_paths]
         return {executable: _which(executable) for executable in exec_without_path}
 
     def _prepare_compilation(self, path: str) -> int:
@@ -150,20 +153,21 @@ class ModelCompiler():
 
     def build(self) -> BuildResult:
         errors = []     # type List[str]
+
+        return_value_prepare = self._prepare_compilation(self.working_dir)
+
+        if return_value_prepare is not 0:
+            errors.append('Could not prepare model build: return value was {}'.format(return_value_prepare))
+
+        return_value_build = self._compile()
+
+        if return_value_build is not 0:
+            errors.append('Could not build model: return value was {}'.format(return_value_build))
+
         artifacts = []  # type List[Path]
 
-        return_value = self._prepare_compilation(self.working_dir)
-
-        if return_value is not 0:
-            errors.append('Could not prepare model build: return value was {}'.format(return_value))
-
-        return_value = self._compile()
-
-        if return_value is not 0:
-            errors.append('Could not build model: return value was {}'.format(return_value))
-
         try:
-            artifacts += self._resolve_artifacts()
+            artifacts.extend(self._resolve_artifacts())
         except AssertionError as e:
             errors.append(str(e))
 
