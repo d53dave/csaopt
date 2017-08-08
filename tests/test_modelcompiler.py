@@ -15,12 +15,14 @@ def model_compiler():
 
     internal_conf['build.exec_names'] = ['cmake', 'make']
     internal_conf['build.required_artifacts'] = 'model.o'
+    internal_conf['build.timeouts.cmake'] = 30
+    internal_conf['build.timeouts.make'] = 30
 
     return context.ModelCompiler(model_proj_path, conf, internal_conf)
 
 
 def test_build(model_compiler):
-    print(dir(model_compiler))
+    result = model_compiler.build()
 
-    model_compiler.build()
-    assert 1 is 2
+    assert result.failed()
+    

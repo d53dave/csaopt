@@ -119,17 +119,17 @@ class ModelCompiler():
         try:
             self.compile_thread.start()
         finally:
-            model_compiler.compile_subproc.terminate()
+            self.compile_subproc.terminate()
             try:
-                model_compiler.compile_subproc.wait(timeout=self.make_timeout)
+                self.compile_subproc.wait(timeout=self.make_timeout)
                 # TODO: add verbose flag and handling
-                while not model_compiler.output_queue.empty():
-                    line = model_compiler.output_queue.get(block=False)
-                return model_compiler.compile_subproc.returncode
+                while not self.output_queue.empty():
+                    line = self.output_queue.get(block=False)
+                return self.compile_subproc.returncode
             except subprocess.TimeoutExpired:
                 logger.error('Model build step did not complete in time')
-                while not model_compiler.output_queue.empty():
-                    line = model_compiler.output_queue.get(block=False)
+                while not self.output_queue.empty():
+                    line = self.output_queue.get(block=False)
                     logger.error(line)
                 return -1
 
@@ -139,7 +139,7 @@ class ModelCompiler():
     def _resolve_artifacts(self) -> List[Path]:
         artifacts = []
         for artifact in self.required_artifacts:
-            artifact_path = os.path.join(self.working_dir, artifact)
+            artifact_path = os.path.join(self.working_dir.name, artifact)
             logger.debug('Model compiler verifying artifact {}'.format(artifact_path))
             if os.path.isfile(artifact_path):
                 if os.path.getsize(artifact_path) > 0:
