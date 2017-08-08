@@ -51,8 +51,8 @@ class ModelCompiler():
         self.output_queue = queue.Queue()
         self.working_dir = _make_temp_dir('csaopt_')
         self.required_artifacts = internal_conf['build.required_artifacts']
-        self.make_timeout = internal_conf['build.timeouts.make']
-        self.cmake_timeout = internal_conf['build.timeouts.cmake']
+        self.make_timeout = float(internal_conf['build.timeouts.make'])
+        self.cmake_timeout = float(internal_conf['build.timeouts.cmake'])
 
         assert self.required_artifacts is not None
         assert len(self.required_artifacts) > 0
