@@ -39,7 +39,7 @@ class AnsibleManager():
                             scp_extra_args=None, become=True, become_method=None,
                             become_user='root', verbosity=None, check=False)
 
-        self.variable_manager.extra_vars = {'hosts': 'mywebserver'}  # This can accomodate various other command line arguments.`
+        self.variable_manager.extra_vars = {'hosts': 'mywebserver'}
         passwords = {}
 
         self.playbook_executor = PlaybookExecutor(

@@ -52,7 +52,7 @@ class AWSTools():
         self.private_key_path = None
         self.worker_count = config['aws.worker_count']
         self.separate_queue_instance = config['aws.separate_queue_instance']
-        
+
     def __enter__(self):
         self._create_sec_group()
         self._create_key_pair()
@@ -60,7 +60,7 @@ class AWSTools():
         if self.separate_queue_instance:
             instance = self._start_queue_instance()
             instances.append(instance)
-        
+
         self.instances = instances
 
     def __exit__(self, exc_type, exc_value, traceback):
