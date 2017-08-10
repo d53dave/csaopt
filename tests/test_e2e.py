@@ -5,8 +5,8 @@ import subprocess
 from pathlib import Path
 
 
-@pytest.mark.skipif(os.environ["CSAOPT_RUN_E2E"],
-                    reason="E2E Tests are off by default")
+@pytest.mark.skipif(os.getenv('CSAOPT_RUN_E2E'),
+                    reason='E2E Tests are disabled by default. Set the CSAOPT_RUN_E2E env variable to enable')
 def test_end2end():
     conf_path = Path('tests/e2e/csaopt_e2e.conf').resolve()
     model_path = Path('test/e2e/model/').resolve()
