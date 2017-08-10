@@ -33,6 +33,35 @@ Currently, the python development is based on
 dependencies and the virtual environment. The C++ parts are 
 developed using CMake.
 
+#### Running the Test Suite
+
+From outsite of the `virtualenv` the test suite can be executed from the project root using
+
+```bash
+pipenv run py.test -v tests
+```
+
+From inside the `virtualenv` (i.e. after executing `pipenv shell`), the suite can be executed using
+
+```bash
+pytest
+#or
+py.test
+```
+
+#### End-to-End Test
+
+The end-to-end test suite is disabled by default, since it requires a complete setup, i.e. including AWS credentials. Therefore, running the test will incur some costs. The costs should be relatively low, given that the provided test optimization should only run for a few seconds. AWS, however, charges a whole hour even if the instances are terminated after a few seconds.
+
+The AWS credentials for the end-to-end tests need to be provided as environment variables, as documented in [awstools.py](app/aws/awstools.py).
+
+The test suite is activated by setting a environment variable called `CSAOPT_RUN_E2E`. The contents are irrelevant, it should evaluate to a [truthy value inside Python](https://docs.python.org/3/library/stdtypes.html#truth-value-testing). 
+
+After setting the appropriate environment variables, the whole suite can be executed and will include the end-to-end tests (see above). If you want to run just the end-to-end tests, you can use the following command from the `virtualenv`:
+
+```bash
+py.test -s test_e2e.py::test_end2end
+```
 
 ## Change History
 
