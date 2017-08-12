@@ -1,6 +1,57 @@
 #!/usr/bin/env python3
 
 import sys
+import click
+
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+
+@click.group()
+@click.version_option(version='1.0.0')
+def cli():
+    print('Running cli')
+    pass
+
+
+@cli.command(name='run',
+             help='Run the optimization based on the provided config and model.')
+@click.option('--model',
+              default=False,
+              type=click.Path(exists=True, resolve_path=True),
+              help='Folder containing the model that should be used for optimization.')
+@click.option('--conf',
+              default='conf/csaopt.conf',
+              type=click.Path(exists=True, resolve_path=True),
+              help='Path to the CSAOpt config. If not provided, \'conf/csaopt.conf\' will be used')
+def run_opt(**kwargs):
+    print('Running opt')
+    cli(**kwargs)
+
+
+@cli.command(name='check',
+             help='Check and validate the provided configuration and model.')
+@click.option('--model',
+              default=False,
+              type=click.Path(exists=True, resolve_path=True),
+              help='Folder containing the model that should be used for optimization.')
+@click.option('--conf',
+              default='conf/csaopt.conf',
+              type=click.Path(exists=True, resolve_path=True),
+              help='Path to the CSAOpt config. If not provided, \'conf/csaopt.conf\' will be used')
+@click.option('--with-aws',
+              is_flag=True,
+              default=False,
+              help='If enabled, the check will also spin up EC2 instances to verify configuration and communication.')
+def run_check(**kwargs):
+    pass
+
+
+@cli.command(name='cleanup',
+             help='Clean up generated files and terminate any running EC2 instances')
+def cleanup():
+    raise NotImplementedError
+
 
 if __name__ == '__main__':
-    sys.exit(1)
+    print('Running CSAOpt')
+    cli()
