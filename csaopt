@@ -2,36 +2,48 @@
 
 import sys
 import click
+from pyhocon import ConfigFactory
+
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
+def get_configs(conf_path):
+    return ConfigFactory.parse_file(conf_path)
+
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
 @click.group()
 @click.version_option(version='1.0.0')
-def cli():
-    print('Running cli')
-    pass
+def cli(**kwargs):
+    try:
+        internal_conf = get_configs('app/internal/csaopt-internal.conf')
+        kwargs['internal_conf'] = internal_conf
+    except Exception as e:
+        eprint('Could not load configs', e)
+        sys.exit(1)
 
 
 @cli.command(name='run',
              help='Run the optimization based on the provided config and model.')
 @click.option('--model',
-              default=False,
+              default='user_model/',
               type=click.Path(exists=True, resolve_path=True),
               help='Folder containing the model that should be used for optimization.')
 @click.option('--conf',
               default='conf/csaopt.conf',
               type=click.Path(exists=True, resolve_path=True),
               help='Path to the CSAOpt config. If not provided, \'conf/csaopt.conf\' will be used')
-def run_opt(**kwargs):
-    print('Running opt')
-    cli(**kwargs)
+def run_opt(model, conf, **kwargs):
+    print('Called run', kwargs, model, conf)
 
 
 @cli.command(name='check',
              help='Check and validate the provided configuration and model.')
 @click.option('--model',
-              default=False,
               type=click.Path(exists=True, resolve_path=True),
               help='Folder containing the model that should be used for optimization.')
 @click.option('--conf',
@@ -43,7 +55,7 @@ def run_opt(**kwargs):
               default=False,
               help='If enabled, the check will also spin up EC2 instances to verify configuration and communication.')
 def run_check(**kwargs):
-    pass
+    print('Check called')
 
 
 @cli.command(name='cleanup',
