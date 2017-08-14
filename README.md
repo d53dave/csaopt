@@ -1,6 +1,6 @@
 # CSAOpt - A Cloud GPU based Simulated Annealing Optimization Framework. [![Build Status](https://travis-ci.org/d53dave/csaopt.svg?branch=master)](https://travis-ci.org/d53dave/csaopt) [![Coverage Status](https://coveralls.io/repos/github/d53dave/csaopt/badge.svg?branch=master)](https://coveralls.io/github/d53dave/csaopt?branch=master)
 
-The main premise of this framework is that a user provides the implementation for an abstract base class that describes the *standard* way of doing Simulated Annealing while CSAOpt takes care of starting, configuring and running a massively parallel flavor of Simulated Annealing on GPUs hosted in the cloud.
+The main premise of this framework is that a user provides the implementation for an abstract base class that describes the *standard* way of doing Simulated Annealing while CSAOpt takes care of starting, configuring and running a massively parallel flavor of Simulated Annealing on GPUs hosted in the cloud¹.
 
 ## Usage
 
@@ -98,3 +98,5 @@ did not make it into version control and features
 were added and abandoned at will. The last version of the
 C++ prototype in this repo was commit [6c922f](https://github.com/d53dave/csaopt/tree/6c922f933eceb8992e9acae36f1767336c56209f).
 
+## Notes
+¹ Currently, only AWS EC2 is suported.
