@@ -1,6 +1,6 @@
 import pathlib
 
-__all__ = ['compiler']
+__all__ = ['modelcompiler']
 
 from typing import List
 
