@@ -99,4 +99,4 @@ were added and abandoned at will. The last version of the
 C++ prototype in this repo was commit [6c922f](https://github.com/d53dave/csaopt/tree/6c922f933eceb8992e9acae36f1767336c56209f).
 
 ## Notes
-¹ Currently, only AWS EC2 is suported.
+¹ Only AWS EC2 and local GPUs are currently supported. Pull reqeusts are welcome.
