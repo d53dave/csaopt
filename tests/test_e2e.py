@@ -36,6 +36,7 @@ def test_end2end():
             This usually means that it could not successfully terminate
             all EC2 instances that it started on AWS.
 
-            **MAKE SURE TO MANUALLY CHECK AND TERMINATE INSTANCES IN THE CSAOPT SEC-GROUP**
-            **               RUNNING INSTANCES WILL CONTINUE TO BE BILLED                **
+            ** MAKE SURE TO MANUALLY CHECK AND TERMINATE INSTANCES  **
+            ** CSAOPT SECURITY GROUP. RUNNING MACHINES DO CONTINUE  **
+            ** TO INCUR COSTS. YOU HAVE BEEN WARNED!                **
             """
