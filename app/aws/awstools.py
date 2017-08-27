@@ -54,6 +54,7 @@ class AWSTools():
         self.separate_queue_instance = config['aws.separate_queue_instance']
 
     def __enter__(self):
+        """On enter, AWSTools prepares the AWS security group, key pair and spins up the required intances"""
         self._create_sec_group()
         self._create_key_pair()
         instances = self._start_worker_instances()
@@ -64,18 +65,21 @@ class AWSTools():
         self.instances = instances
 
     def __exit__(self, exc_type, exc_value, traceback):
+        """On exit, AWSTools terminates the started instances and removes security groups"""
         instance_ids = [instance.id for instance in self.instances]
         self.ec2.instances.filter(InstanceIds=instance_ids).stop()
         self.ec2.instances.filter(InstanceIds=instance_ids).terminate()
 
-    def _start_instances(self, count=2):
+    def _start_instances(self, count=2, imageId='ami-1e299d7e', instanceType='t2.micro'):
+        """Start a number of ec2 instances"""
         self.instances = self.ec2.create_instances(
-                ImageId='ami-1e299d7e',
+                ImageId=imageId,
                 MinCount=count,
                 MaxCount=count,
-                InstanceType='t2.micro')
+                InstanceType=instanceType)
 
     def _terminate_instances(self):
+        """Terminate all instances managed by AWSTools"""
         for instance in self.instances:
             instance = self.ec2.Instance(instance.id)
             response = instance.terminate()
@@ -85,6 +89,7 @@ class AWSTools():
         return self.instances
 
     def _create_key_pair(self, key_name):
+        """Creates a key pair for communitcation with the EC2 instances. TODO: this might be unnecessary"""
         key = self.ec2.create_key_pair(KeyName=key_name)
         return key
 
