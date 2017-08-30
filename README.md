@@ -71,6 +71,18 @@ After setting the appropriate environment variables, the whole suite can be exec
 py.test -s test_e2e.py::test_end2end
 ```
 
+## Cloud Computing Platforms
+
+At this moment, only Amazon Web Services/EC2² is supported but it should be easy to add support for other providers. In a nutshell, any provider that can be (1) programmatically provisioned via public API, (2) provides CUDA capable hardware and (3) can run the nvidia-docker tool *should* be able to support CSAOpt, since deployment and most configuration is done via Docker.
+
+Obvious candidates would be the [Google Cloud Platform](https://cloud.google.com) as well as [Microsoft Azure](https://azure.microsoft.com/en-us/), both of which fulfill the 3 requirements stated above. Additionally, both providers conveniently offer client libraries on PyPI.
+
+## FAQs
+
+> Why is this project not using docker to provision the messagequeue and workers?
+
+That is a good question and it seems a very good use-case for docker, especially since NVidia [published an official Docker Engine Utility for NVIDIA GPUs](https://github.com/NVIDIA/nvidia-docker). I am considering throwing out ansible (which is not meant to be used the way I use it). 
+
 ## Change History
 
 > 0.1.0 Change to Python
@@ -99,4 +111,6 @@ were added and abandoned at will. The last version of the
 C++ prototype in this repo was commit [6c922f](https://github.com/d53dave/csaopt/tree/6c922f933eceb8992e9acae36f1767336c56209f).
 
 ## Notes
-¹ Only AWS EC2 and local GPUs are currently supported. Pull reqeusts are welcome.
+¹ Only AWS EC2 and local GPUs are currently supported. Pull reqeusts are welcome. 
+
+² There are plans to move to [ECS](https://aws.amazon.com/ecs/) once ECS supports nvidia-docker **or** docker allows more capabilities in plugins so that nvidia-docker can provide a proper docker plugin.
