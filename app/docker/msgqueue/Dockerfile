@@ -10,7 +10,7 @@ ENV data_port=$data_port
 ENV management_port=$management_port
 ENV csaopt_dir=/opt/csaopt-zmq
 
-RUN apk update && apk add linux-headers git make curl gcc g++ python3 libzmq python3-dev
+RUN apk update && apk add linux-headers git make curl g++ python3 libzmq python3-dev
 RUN curl -O https://capnproto.org/capnproto-c++-$capnp_version.tar.gz &&\
     tar zxf capnproto-c++-$capnp_version.tar.gz &&\
     cd capnproto-c++-$capnp_version &&\
@@ -24,7 +24,7 @@ WORKDIR $csaopt_dir
 RUN pip3 install pipenv &&\
     pipenv install
 
-RUN apk git del linux-headers make gcc g++ python3-dev
+RUN apk git del linux-headers make g++ python3-dev
 
 RUN pipenv run csaopt-zmq --port-data $data_port --port-management $management_port
 
