@@ -74,9 +74,11 @@ py.test -s test_e2e.py::test_end2end
 
 ## Cloud Computing Platforms
 
-At this moment, only Amazon Web Services/EC2² is supported but it should be easy to add support for other providers. In a nutshell, any provider that can be (1) programmatically provisioned via public API, (2) provides CUDA capable hardware and (3) can run the nvidia-docker tool *should* be able to support CSAOpt, since deployment and most configuration is done via Docker.
+At this moment, only Amazon Web Services/EC2² is supported but it should be easy to add support for other providers. In a nutshell, any provider that can be (1) programmatically provisioned via public API, (2) provides CUDA capable hardware and (3) can run the nvidia-docker tool *should* be able to support CSAOpt, since deployment and most configuration is done via Docker. On AWS/EC2, CSAOpt uses an AMI built by me, which has docker and nvidia-docker installed, as well as pulled images. Without those, a complete installation would take several minutes for each optimization run, and waiting makes people unhappy.
 
-Obvious candidates would be the [Google Cloud Platform](https://cloud.google.com) as well as [Microsoft Azure](https://azure.microsoft.com/en-us/), both of which fulfill the 3 requirements stated above. Additionally, both providers conveniently offer client libraries on PyPI.
+The script used to setup the CSAOpt AMI on AWS can be found in the [setup-dockerhost.sh](app/docker/setup-dockerhost.sh) file. It can handle Debian/Ubuntu and Fedora/CentOS based distributions.
+
+Obvious candidates would be [Google Cloud Platform](https://cloud.google.com) as well as [Microsoft Azure](https://azure.microsoft.com/en-us/), both of which fulfill the 3 requirements stated above. Additionally, both providers conveniently offer client libraries on PyPI.
 
 ## FAQs
 
