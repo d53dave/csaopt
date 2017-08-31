@@ -1,22 +1,14 @@
 import boto3
-import logging
-import requests
-import random
-import string
 from botocore.exceptions import ClientError
+import logging
+
+from ..instancemanager.instancemanager import _get_own_ip
+from ..instancemanager.instancemanager import InstanceManager
 
 logger = logging.getLogger()
 
 
-def _get_own_ip():
-    return requests.get('https://api.ipify.org/').text
-
-
-def _get_random_string(length=8):
-    return ''.join([random.choice(string.ascii_letters + string.digits) for n in range(length)])
-
-
-class AWSTools():
+class AWSTools(InstanceManager):
     """The AWSTools class provides an abstraction over boto3 and EC2 for the use with CSAOpt
 
     It is intended to be used as a context manager, disposing of instances in it's __exit__()
