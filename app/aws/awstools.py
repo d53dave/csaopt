@@ -48,7 +48,6 @@ class AWSTools(InstanceManager):
     def __enter__(self):
         """On enter, AWSTools prepares the AWS security group, key pair and spins up the required intances"""
         self._create_sec_group()
-        self._create_key_pair()
         instances = self._start_worker_instances()
         if self.separate_queue_instance:
             instance = self._start_queue_instance()
@@ -79,17 +78,6 @@ class AWSTools(InstanceManager):
 
     def get_running_instances(self):
         return self.instances
-
-    def _create_key_pair(self, key_name):
-        """Creates a key pair for communitcation with the EC2 instances. TODO: this might be unnecessary"""
-        key = self.ec2.create_key_pair(KeyName=key_name)
-        return key
-
-    def _save_key_material(self, key):
-        pass
-
-    def _remove_key(self):
-        pass
 
     def _remove_sec_group(self):
         """Removes the security group created by CSAOpt"""
