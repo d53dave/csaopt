@@ -20,18 +20,18 @@ class InstanceManager():
     def _provision_instances(count=2, **kwargs):
         """Start and configure instances"""
 
-    @abs.abstractmethod
+    @abc.abstractmethod
     def _get_running_instances(self):
         """Returns the currently managed instances"""
 
-    @abs.abstractmethod
+    @abc.abstractmethod
     def _terminate_instances(self):
         """Terminate managed instances"""
 
-    @abs.abstractmethod
+    @abc.abstractmethod
     def __enter__(self):
         """InstanceManager is a ContextManager"""
 
-    @abs.abstractmethod
+    @abc.abstractmethod
     def __exit__(self, exc_type, exc_value, traceback):
         """Cleanup resources on exit"""
