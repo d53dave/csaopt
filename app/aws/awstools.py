@@ -38,6 +38,7 @@ class AWSTools(InstanceManager):
         else:
             # This will look for the env variables
             self.ec2 = boto3.client('ec2')
+
         self.region
         self.instances = []
         self.sec_group = None
@@ -45,36 +46,35 @@ class AWSTools(InstanceManager):
         self.worker_count = config['aws.worker_count']
         self.separate_queue_instance = config['aws.separate_queue_instance']
 
-    def __enter__(self):
-        """On enter, AWSTools prepares the AWS security group, key pair and spins up the required intances"""
-        self._create_sec_group()
-        instances = self._start_worker_instances()
-        if self.separate_queue_instance:
-            instance = self._start_queue_instance()
-            instances.append(instance)
+    def _provision_instances(self, count=2, **kwargs):
+        """Start and configure instances"""
 
-        self.instances = instances
+        imageId = kwargs.get('imageId', default='ami-1e299d7e')
+        instanceType = kwargs.get('instanceType', default='t2.micro')
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        """On exit, AWSTools terminates the started instances and removes security groups"""
-        instance_ids = [instance.id for instance in self.instances]
-        self.ec2.instances.filter(InstanceIds=instance_ids).stop()
-        self.ec2.instances.filter(InstanceIds=instance_ids).terminate()
-
-    def _start_instances(self, count=2, imageId='ami-1e299d7e', instanceType='t2.micro'):
-        """Start a number of ec2 instances"""
         self.instances = self.ec2.create_instances(
                 ImageId=imageId,
                 MinCount=count,
                 MaxCount=count,
                 InstanceType=instanceType)
 
+    def _get_running_instances(self):
+        """Returns the currently managed instances"""
+
     def _terminate_instances(self):
         """Terminate all instances managed by AWSTools"""
-        for instance in self.instances:
-            instance = self.ec2.Instance(instance.id)
-            response = instance.terminate()
-            print(response)
+        instance_ids = [instance.id for instance in self.instances]
+        self.ec2.instances.filter(InstanceIds=instance_ids).stop()
+        self.ec2.instances.filter(InstanceIds=instance_ids).terminate()
+
+    def __enter__(self):
+        """On enter, AWSTools prepares the AWS security group and spins up the required intances"""
+        self._create_sec_group()
+        self._provision_instances()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """On exit, AWSTools terminates the started instances and removes security groups"""
+        self._terminate_instances()
 
     def get_running_instances(self):
         return self.instances
@@ -116,6 +116,7 @@ class AWSTools(InstanceManager):
                      'ToPort': 22,
                      'IpRanges': [{'CidrIp': '{}/0'.format(self.own_external_ip)}]}
                 ])
+
             logger.debug('Authorized Security Group Ingress for CidrIp {} with result: {}'.format(
                 self.own_external_ip,
                 data
