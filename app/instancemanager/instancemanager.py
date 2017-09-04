@@ -17,7 +17,7 @@ class InstanceManager():
         pass
 
     @abc.abstractmethod
-    def _provision_instances(count=2, **kwargs):
+    def _provision_instances(self, count=2, **kwargs):
         """Start and configure instances"""
 
     @abc.abstractmethod
