@@ -2,6 +2,17 @@
 verify_ssl = true
 url = "https://pypi.python.org/simple"
 
+[packages]
+pyhocon = "*"
+boto3 = "*"
+arrow = "*"
+click = "*"
+requests = "*"
+pyzmq = "*"
+ujson = "*"
+docker = "*"
+tornado = "*"
+
 [dev-packages]
 pytest = "*"
 pytest-cov = "*"
@@ -14,13 +25,3 @@ bumpversion = "*"
 flake8 = "*"
 pytest-timeout = "*"
 pytest-mock = "*"
-
-[packages]
-pyhocon = "*"
-boto3 = "*"
-arrow = "*"
-click = "*"
-requests = "*"
-pyzmq = "*"
-ujson = "*"
-docker = "*"
