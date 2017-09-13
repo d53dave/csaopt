@@ -12,6 +12,8 @@ pyzmq = "*"
 ujson = "*"
 docker = "*"
 tornado = "*"
+pycapnp = "*"
+zstandard = "*"
 
 [dev-packages]
 pytest = "*"
