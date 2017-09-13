@@ -1,9 +1,8 @@
 import uuid
-import zstdandard as zstd
+import zstd
 import ujson
 
-from Typing import Dict
-from Typing import object
+from typing import Dict
 
 __all__ = ['jobmanager']
 
@@ -13,6 +12,8 @@ class Job():
         self.id = str(uuid.uuid4())
         self.expected_responses = []
         self.payload = None
+        self.optimization_name = None
+        self.state_name = None
 
     def finished(self):
         return self.payload is not None
