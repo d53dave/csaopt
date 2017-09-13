@@ -2,7 +2,7 @@
 
 import os
 import sys
-import shutil
+from distutils import dir_util
 
 sys.path.insert(0, os.path.abspath('.'))
 
@@ -12,9 +12,9 @@ from app.msgqclient.client import QueueClient
 
 
 def copy_folder_contents(src, dest):
+
     try:
-        shutil.copy(src, dest)
-    # eg. source or destination doesn't exist
-    except IOError as e:
+        dir_util.copy_tree(src, dest)
+    except dir_util.DistutilsFileError as e:
         print('Error while copying folder contents from {} to {}: {}'.format(src, dest, e))
         raise
