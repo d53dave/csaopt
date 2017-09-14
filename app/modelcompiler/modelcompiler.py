@@ -53,6 +53,7 @@ class ModelCompiler():
         self.required_artifacts = internal_conf['build.required_artifacts']
         self.make_timeout = float(internal_conf['build.timeouts.make'])
         self.cmake_timeout = float(internal_conf['build.timeouts.cmake'])
+        self.cmakelists_template = internal_conf['build.cmake.template'] 
 
         assert self.required_artifacts is not None
         assert len(self.required_artifacts) > 0
@@ -108,6 +109,11 @@ class ModelCompiler():
                 for line in self.output_queue:
                     logger.error(line)
                 return -1
+
+    def _load_cmake_template(self, sources: List[str]) -> str:
+        with open(self.cmakelists_template, 'r') as f:
+            template = f.read()
+            return template.format(source_files=' '.join(sources))
 
     def _compile(self) -> int:
         self.compile_subproc = subprocess.Popen(
