@@ -34,9 +34,9 @@ def test_end2end():
             ==========================================================
 
             This usually means that it could not successfully terminate
-            all EC2 instances that it started on AWS.
+            all instances that it provisioned on the cloud service.
 
-            ** MAKE SURE TO MANUALLY CHECK AND TERMINATE INSTANCES  **
-            ** CSAOPT SECURITY GROUP. RUNNING MACHINES DO CONTINUE  **
-            ** TO INCUR COSTS. YOU HAVE BEEN WARNED!                **
+            ** MAKE SURE TO MANUALLY CHECK AND TERMINATE INSTANCES   **
+            ** IN THE CSAOPT GROUP/TAG. RUNNING MACHINES CONTINUE TO **
+            ** INCUR COSTS. YOU HAVE BEEN WARNED!                    **
             """
