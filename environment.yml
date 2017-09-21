@@ -1,0 +1,29 @@
+name: csaopt
+channels:
+  - conda-forge
+dependencies:
+  - python=3.6
+  - numba
+  - cudatoolkit
+  - boto3
+  - arrow
+  - click
+  - requests
+  - pyzmq
+  - ujson
+  - tornado
+  - pycapnp
+  - zstandard
+  - pytest
+  - pytest-cov
+  - Sphinx
+  - coverage
+  - coveralls
+  - bumpversion
+  - flake8
+  - pytest-timeout
+  - pytest-mock
+  - pip:
+    - pyhocon
+    - mypy
+    - sphinxcontrib-napoleon
