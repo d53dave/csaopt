@@ -43,12 +43,14 @@ based on Ubuntu Server 16.04 LTS.
 
 Required software:
 
-- Python 3.5 or higher
+- Python 3.6 or higher
 - [Pipenv](http://docs.pipenv.org/en/latest/) is not strictly required, but recommended
 - [AWS](https://aws.amazon.com/) credentials or a local GPU capable of running [CUDA](https://www.geforce.com/hardware/technology/cuda) computations.
-- [GCC](https://gcc.gnu.org/) 4.9 or later ([clang](https://clang.llvm.org/) is not yet supported, but I will be looking into that)
+- [GCC](https://gcc.gnu.org/) 4.9 or later ([clang](https://clang.llvm.org/) is not yet 
+supported, but I will be looking into that)
 - [CMake](https://cmake.org/) 3.3 or higher
-- Development package for [libzmq3](https://packages.ubuntu.com/search?keywords=libzmq3-dev), from your favorite package manager.
+- Development package for [libzmq3](https://packages.ubuntu.com/search?keywords=libzmq3-dev), 
+from your favorite package manager.
 
 If you choose to run `csaopt` without `pipenv` and a virtual environment, you
 need to make sure you manually install the required Python packages, e.g. by
@@ -129,18 +131,34 @@ Debian/Ubuntu and Fedora/CentOS based distributions.
 Obvious candidates would be [Google Cloud Platform](https://cloud.google.com)
 as well as [Microsoft Azure](https://azure.microsoft.com/en-us/), both of which
 fulfill the 3 requirements stated above. Additionally, both providers
-conveniently offer client libraries on PyPI.
+conveniently offer client libraries on PyPI. In case somebody wanted to add
+support for another provider, the usual procedure would be:
+
+1. Add client package from a repository (e.g. [google cloud from PyPI](https://pypi.python.org/pypi/google-cloud), [azure-mgmt-compute from conda-forge](https://anaconda.org/conda-forge/azure-mgmt-compute))
+2. Implement the [instancemanager interface](app/instancemanager/instancemanager.py), see [awstools.py](app/aws/awstools.py)
+3. Add `elif` branch to create the instance manager based on the config (TODO: where is this?)
+4. Profit
 
 ## FAQs
 
 > Why is this project not using docker to provision the message queue and workers?
 
-That is a good question and it seems a very good use-case for docker, especially
+It is! Things are a little bit awkward at the moment, since [NVidia uses their own tool called Docker Engine Utility for NVIDIA GPUs](https://github.com/NVIDIA/nvidia-docker), which is not yet compatible with [ECS](https://aws.amazon.com/ecs/) or other container services. This means that we still rely on pre-built AMIs (or however images are called on other cloud providers), but when nvidia-docker becomes ready to be used with ECS, this will rock. ~~That is a good question and it seems a very good use-case for docker, especially
 since NVidia [published an official Docker Engine Utility for NVIDIA GPUs](https://github.com/NVIDIA/nvidia-docker).
 I am considering throwing out ansible (which is not meant to be used the way I
-use it).
+use it).~~
 
 ## Change History
+
+> 0.2.0 Change to Numba for CUDA computations
+
+With v0.2.0 the remaining `C++` code (i.e. directly interfacing with CUDA)
+will be thrown out in favor of [Numba](https://github.com/numba/numba). 
+This will imply a switch from `pipenv` to `conda`, since I don't want to 
+compile llvmlite for the deployment. This will also move much closer to 
+the initial goal of using a single programming language for all components
+of CSAOpt, and Python is a much nicer language than C++, in my opinion.
+
 
 > 0.1.0 Change to Python
 
@@ -148,7 +166,7 @@ With v0.1.0, most C++ code was abandoned. It became clear
 that writing and maintaining this piece of software in C++
 was never a good idea. Or, in other words, after chasing
 obscure bugs where they should not be, I gave up. The initial
-thought was not to split the codebase into multiple languages for
+thought was **not to split the codebase into multiple languages** for
 the sake of the current and future developers and maintainers.
 This split will gradually be introduced, resulting, ideally, in
 a structure where all glue code, i.e. config parsing, command line
