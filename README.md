@@ -131,16 +131,22 @@ Debian/Ubuntu and Fedora/CentOS based distributions.
 Obvious candidates would be [Google Cloud Platform](https://cloud.google.com)
 as well as [Microsoft Azure](https://azure.microsoft.com/en-us/), both of which
 fulfill the 3 requirements stated above. Additionally, both providers
-conveniently offer client libraries on PyPI.
+conveniently offer client libraries on PyPI. In case somebody wanted to add
+support for another provider, the usual procedure would be:
+
+1. Add client package from a repository (e.g. [google cloud from PyPI](https://pypi.python.org/pypi/google-cloud), [azure-mgmt-compute from conda-forge](https://anaconda.org/conda-forge/azure-mgmt-compute))
+2. Implement the [instancemanager interface](app/instancemanager/instancemanager.py), see [awstools.py](app/aws/awstools.py)
+3. Add `elif` branch to create the instance manager based on the config (TODO: where is this?)
+4. Profit
 
 ## FAQs
 
 > Why is this project not using docker to provision the message queue and workers?
 
-That is a good question and it seems a very good use-case for docker, especially
+It is! Things are a little bit awkward at the moment, since [NVidia uses their own tool called Docker Engine Utility for NVIDIA GPUs](https://github.com/NVIDIA/nvidia-docker), which is not yet compatible with [ECS](https://aws.amazon.com/ecs/) or other container services. This means that we still rely on pre-built AMIs (or however images are called on other cloud providers), but when nvidia-docker becomes ready to be used with ECS, this will rock. ~~That is a good question and it seems a very good use-case for docker, especially
 since NVidia [published an official Docker Engine Utility for NVIDIA GPUs](https://github.com/NVIDIA/nvidia-docker).
 I am considering throwing out ansible (which is not meant to be used the way I
-use it).
+use it).~~
 
 ## Change History
 
