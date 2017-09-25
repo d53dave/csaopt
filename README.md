@@ -43,7 +43,7 @@ based on Ubuntu Server 16.04 LTS.
 
 Required software:
 
-- Python 3.5 or higher
+- Python 3.6 or higher
 - [Pipenv](http://docs.pipenv.org/en/latest/) is not strictly required, but recommended
 - [AWS](https://aws.amazon.com/) credentials or a local GPU capable of running [CUDA](https://www.geforce.com/hardware/technology/cuda) computations.
 - [GCC](https://gcc.gnu.org/) 4.9 or later ([clang](https://clang.llvm.org/) is not yet 
