@@ -1,7 +1,8 @@
 import pytest
-import context
-
+import os
 from collections import defaultdict
+
+import context
 
 
 @pytest.fixture
@@ -25,12 +26,12 @@ def internal_conf():
 @pytest.fixture(scope='session')
 def working_dir(tmpdir_factory):
     fn = tmpdir_factory.mktemp('csaopt-model')
-    context.copy_folder_contents('app/model/src/', fn.dirname)
+    context.copy_folder_contents('app/model/', os.path.join(fn.dirname, 'model'))
     return fn
 
 
 def test_build(working_dir, conf, internal_conf):
-    context.copy_folder_contents('tests/testmodel', working_dir.dirname)
+    context.copy_folder_contents('tests/testmodel', os.path.join(working_dir.dirname, 'usersrc'))
     model_proj_path = ''
     model_compiler = context.ModelCompiler(model_proj_path, conf, internal_conf)
 
