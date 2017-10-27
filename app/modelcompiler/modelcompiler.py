@@ -54,6 +54,7 @@ class ModelCompiler():
         self.make_timeout = float(internal_conf['build.timeouts.make'])
         self.cmake_timeout = float(internal_conf['build.timeouts.cmake'])
         self.cmakelists_template = internal_conf['build.cmake.template'] 
+        self.user_model_files = conf['']
 
         assert self.required_artifacts is not None
         assert len(self.required_artifacts) > 0
@@ -87,6 +88,9 @@ class ModelCompiler():
         """Runs Cmake and """
 
         assert self.working_dir is not None
+
+
+
         logger.info('Preparing model build')
         logger.debug('Invoking cmake, working_dir=', self.working_dir)
         self.compile_subproc = subprocess.Popen(

@@ -1,5 +1,6 @@
 from . import Job
 from . import SubmissionResult
+from ..msgqclient.client import QueueClient
 
 
 class JobManager():
@@ -9,8 +10,8 @@ class JobManager():
     the msgqueue client class.
     
     """
-    def __init__(self):
-        pass
+    def __init__(self, msgqueue_client: QueueClient):
+        self.queue = msgqueue_client
 
-    def submit(job: Job) -> SubmissionResult:
-        pass
+    def submit(self, job: Job) -> SubmissionResult:
+        self.queue.submit_job(job)
