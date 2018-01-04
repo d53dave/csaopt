@@ -1,32 +1,26 @@
-FROM nvidia/cuda:8.0-devel
-MAINTAINER David Sere "dave@d53dev.net"
+FROM alpine:3.6
+LABEL maintainer="David Sere <dave@d53dev.net>"
 
-ARG capnp_version=0.6.1
-ARG msgq_ip=127.0.0.1
-ARG data_port=5353
-ARG management_port=5354
+ARG kafka_url=localhost:9092
+ENV csaopt_dir=/opt/csaopt-zmq
 
-ENV capnp_version=$capnp_version
-ENV data_port=$data_port
-ENV management_port=$management_port
-ENV csaopt_dir=/opt/csaopt-worker
+RUN apk update && apk add git
+RUN wget http://repo.continuum.io/miniconda/Miniconda3-3.7.0-Linux-x86_64.sh -O ~/miniconda.sh &&\
+    sh ~/miniconda.sh -b -p $HOME/miniconda &&\
+    export PATH="$HOME/miniconda/bin:$PATH" &&\
+    conda config --set always_yes yes --set changeps1 no &&\
+    conda update -q conda &&\
+    conda info -a 
 
-RUN apt-get update && apt-get install -y git libzmq3-dev  &&\
-    rm -rf /var/lib/apt/lists/*
-
-RUN curl -O https://capnproto.org/capnproto-c++-$capnp_version.tar.gz &&\
-    tar zxf capnproto-c++-$capnp_version.tar.gz &&\
-    cd capnproto-c++-$capnp_version &&\
-    ./configure && make -j6 && make install && rm -r *
-
-# TODO: replace git clone by a curl of release tar on girhub
-RUN git clone https://github.com/d53dave/csaopt-worker.git $csaopt_dir
+RUN git clone https://github.com/d53dave/csaopt-zmq.git $csaopt_dir
 
 WORKDIR $csaopt_dir
 
-RUN cmake . &&\
-    make
+RUN conda create -q --name csaopt-env --file environment.yml
+RUN source activate csaopt-env
+RUN python setup.py install
 
-RUN apt-get remove --purge git
+RUN apk remove git
 
-RUN ./csaopt-worker --host-msgq $msgq_ip --port-data $data_port --port-management $management_port
+# TODO: Deploy config file or pass params
+RUN python setup.py --kafka $kafka_url
