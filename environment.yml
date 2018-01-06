@@ -3,17 +3,13 @@ channels:
   - conda-forge
 dependencies:
   - python=3.6
-  - numba
-  - cudatoolkit
   - boto3
+  - msgpack-python
   - arrow
   - click
   - requests
-  - pyzmq
   - ujson
-  - tornado
-  - pycapnp
-  - zstandard
+  - dill
   - pytest
   - pytest-cov
   - Sphinx
@@ -24,6 +20,9 @@ dependencies:
   - pytest-timeout
   - pytest-mock
   - pip:
+    - aiokafka
+    - lz4tools
+    - xxhash
     - pyhocon
     - mypy
     - sphinxcontrib-napoleon
