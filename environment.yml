@@ -9,7 +9,6 @@ dependencies:
   - click
   - requests
   - ujson
-  - dill
   - pytest
   - pytest-cov
   - Sphinx
