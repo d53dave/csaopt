@@ -1,8 +1,8 @@
-import pathlib
+__all__ = ['model_loader', 'model_validator']
+import ujson
 
-__all__ = ['model_loader']
-
-from typing import List
+from typing import Dict
+from ..model.optimization import Precision, RandomDistribution
 
 
 class ValidationError(Exception):
@@ -11,15 +11,17 @@ class ValidationError(Exception):
         super().__init__(message)
 
 
-class LoadResult:
-    def __init__(self, artifacts: List[pathlib.Path], errors: List[str]) -> None:
-        self.artifacts = artifacts
-        self.errors = errors
-
-    def failed(self) -> bool:
-        return self.errors is not None and len(self.errors) > 0
+class Model:
+    def __init__(self, name: str,
+                 dimensions: int,
+                 precision: Precision,
+                 random_distr: RandomDistribution,
+                 functions: Dict[str, str]) -> None:
+        self.name: str = name
+        self.dimensions: int = dimensions
+        self.random_dist: RandomDistribution = random_distr
+        self.precision: Precision = precision
+        self.functions: Dict[str, str] = functions
 
     def __str__(self) -> str:
-        failed_or_success = 'success' if not self.failed() else 'failed'
-        results = 'artifacts={}'.format(self.artifacts) if not self.failed() else 'errors={}'.format(self.errors)
-        return 'BuildResult [{}]: {}'.format(failed_or_success, results)
+        return ujson.dumps(self, indent=4)
