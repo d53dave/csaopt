@@ -2,19 +2,13 @@ import imp
 import logging
 import sys
 import string
-import inspect
 
-from . import ValidationError
+from typing import Dict, List
+from . import ValidationError, Model
+from model_validator import ModelValidator
 from random import choice
 
 logger = logging.getLogger(__name__)
-
-
-def _empty_function():
-    pass
-
-
-empty_function_bytecode = _empty_function.__code__.co_code
 
 
 def _random_str(length):
@@ -29,10 +23,31 @@ class ModelLoader():
         with open(self.model_path, 'r') as f:
             model_source = f.read()
             model_name = conf.get('model.name', 'optimization' + _random_str(6))
-            self.model = self._create_module(model_name, source=model_source)
+            self.model_module = self._create_module(model_name, source=model_source)
 
-        if not conf.get('model.skip_validation'):
-            self._validate(self.model)
+        functions = self._extract_functions(self.model_module)
+        # if not conf.get('model.skip_validation'):
+        errors: List[ValidationError] = []
+        errors.extend(ModelValidator.validate_typing())
+        errors.extend(ModelValidator.validate_functions(functions))
+
+        # TODO raise errors or something
+        if len(errors) == 0:
+            self.model = self._create_model(self.model_module)
+
+    def _create_model(self, module: object) -> Model:
+        pass
+
+    def _extract_functions(self, module: object) -> Dict[str, callable]:
+        functions: Dict[str, callable] = {}
+        functions['dimensions'] = module.dimensions
+        functions['precision'] = module.precision
+        functions['distribution'] = module.distribution
+        functions['generate_next'] = module.generate_next 
+        functions['initialize'] = module.initialize
+        functions['cool'] = module.cool
+        functions['acceptance'] = module.acceptance_func
+        functions['evaluate'] = module.evaluate
 
     def get_model(self):
         return self.model
@@ -51,24 +66,3 @@ class ModelLoader():
             raise AssertionError('Model could not be loaded.')
         sys.modules[name] = module
         return module
-
-    def _validate(self, model):
-        # https://docs.python.org/3/library/inspect.html
-        
-        errors = []
-        # Check that all functions are there
-        cool_f = model.cool
-
-        if cool_f is None:
-            errors.append(ValidationError('Definition of function `cool` not found.'))
-
-        if cool_f.__code__.co_code == empty_function_bytecode:
-            raise AssertionError('Definition of function `cool` is empty.')
-
-        # Check that all signatures are correct
-        cool_sig = inspect.signature(cool_f)
-        
-        if len(cool_sig.parameters) != 1:
-            raise AssertionError('Definition of function `cool` should have 1 parameter')
-
-        # Check that functions are non empty
