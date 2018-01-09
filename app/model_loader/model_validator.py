@@ -1,33 +1,43 @@
 import inspect
 import subprocess
 
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Callable
+from ..model import RequiredFunctions
 from . import ValidationError
 
 
-class ModelValidator:
-    validators = []
+def _empty_function():
+    pass
 
-    def _empty_function():
-        pass
+
+class ModelValidator:
 
     empty_function_bytecode = _empty_function.__code__.co_code
 
+    required_param_counts = {
+        'distribution': 0,
+        'precision': 0,
+        'dimensions': 0,
+        'initialize': 2,
+        'generate_next': 2,
+        'cool': 1,
+        'evaluate': 1,
+        'acceptance_func': 3
+    }
+
     @staticmethod
-    def validate_functions(functions: Dict[str, callable]) -> List[ValidationError]:
-        # https://docs.python.org/3/library/inspect.html
-
+    def validate_functions(functions: Dict[str, Callable]) -> List[ValidationError]:
         errors: List[ValidationError] = []
-        errors.extend(ModelValidator._validate_dim(functions['dimensions']))
-        errors.extend(ModelValidator._validate_dim(functions['precision']))
-        errors.extend(ModelValidator._validate_dim(functions['distribution']))
-        errors.extend(ModelValidator._validate_dim(functions['generate_next']))
-        errors.extend(ModelValidator._validate_dim(functions['initialize']))
-        errors.extend(ModelValidator._validate_dim(functions['cool']))
-        errors.extend(ModelValidator._validate_dim(functions['acceptance']))
-        errors.extend(ModelValidator._validate_dim(functions['evaluate']))
 
-        return [e for e in errors if e is not None]
+        for func in RequiredFunctions:
+            val_errors = ModelValidator._validate_function(
+                func.value,
+                functions[func.value],
+                ModelValidator.required_param_counts[func.value])
+
+            errors.extend([err for err in val_errors if err is not None])
+
+        return errors
 
     @staticmethod
     def validate_typing(file_path) -> Optional[ValidationError]:
@@ -36,55 +46,15 @@ class ModelValidator:
 
         if mypy_result.returncode != 0:
             return ValidationError(mypy_result.stdout.decode('utf-8'))
+        return None
 
     @staticmethod
-    def _validate_dim(dim_f: callable) -> List[Optional[ValidationError]]:
-        name = 'dimensions'
+    def _validate_function(name: str, fun: Callable, param_count: int) -> List[Optional[ValidationError]]:
         return [
-            ModelValidator._validate_missing_fun(name, dim_f),
-            ModelValidator._validate_empty_fun(name, dim_f),
-            ModelValidator._validate_return_statement(name, dim_f),
-            ModelValidator._validate_fun_signature_len(name, dim_f, 2)
-        ]
-
-    @staticmethod
-    def _validate_acceptance(accept_f: callable) -> List[Optional[ValidationError]]:
-        name = 'acceptance_func'
-        return [
-            ModelValidator._validate_missing_fun(name, accept_f),
-            ModelValidator._validate_empty_fun(name, accept_f),
-            ModelValidator._validate_return_statement(name, accept_f),
-            ModelValidator._validate_fun_signature_len(name, accept_f, 3)
-        ]
-
-    @staticmethod
-    def _validate_init(self, init_f):
-        name = 'init_f'
-        return [
-            ModelValidator._validate_missing_fun(name, init_f),
-            ModelValidator._validate_empty_fun(name, init_f),
-            ModelValidator._validate_return_statement(name, init_f),
-            ModelValidator._validate_fun_signature_len(name, init_f, 2)
-        ]
-
-    @staticmethod
-    def _validate_eval(self, eval_f):
-        name = 'eval_f'
-        return [
-            ModelValidator._validate_missing_fun(name, eval_f),
-            ModelValidator._validate_empty_fun(name, eval_f),
-            ModelValidator._validate_return_statement(name, eval_f),
-            ModelValidator._validate_fun_signature_len(name, eval_f, 1)
-        ]
-
-    @staticmethod
-    def _validate_next(self, next_f):
-        name = 'next_f'
-        return [
-            ModelValidator._validate_missing_fun(name, next_f),
-            ModelValidator._validate_empty_fun(name, next_f),
-            ModelValidator._validate_return_statement(name, next_f),
-            ModelValidator._validate_fun_signature_len(name, next_f, 2)
+            ModelValidator._validate_missing_fun(name, fun),
+            ModelValidator._validate_empty_fun(name, fun),
+            ModelValidator._validate_return_statement(name, fun),
+            ModelValidator._validate_fun_signature_len(name, fun, param_count)
         ]
 
     @staticmethod
@@ -93,6 +63,7 @@ class ModelValidator:
         if fun is None:
             return ValidationError(
                     'Definition of function `{}` not found.'.format(name))
+        return None
 
     @staticmethod
     def _validate_empty_fun(name, fun) -> Optional[ValidationError]:
@@ -100,16 +71,19 @@ class ModelValidator:
         if fun.__code__.co_code == ModelValidator.empty_function_bytecode:
             return ValidationError(
                     'Definition of function `{}` is empty.'.format(name))
+        return None
 
     @staticmethod
     def _validate_fun_signature_len(name, fun, num_params) -> Optional[ValidationError]:
         if len(inspect.signature(fun).parameters) != num_params:
             return ValidationError(
                 'Signature of `{}` has an incorrect number of parameters (expected {}, found {})'
-                .format(name))
+                .format(name, num_params, len(inspect.signature(fun).parameters)))
+        return None
 
     @staticmethod
     def _validate_return_statement(name, fun) -> Optional[ValidationError]:
         if 'return' not in inspect.getsource(fun):
             return ValidationError(
-                'Body of function `{}` does not contain a `return` statement. ')
+                'Body of function `{}` does not contain a `return` statement. '.format(name))
+        return None
