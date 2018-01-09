@@ -46,46 +46,38 @@ based on Ubuntu Server 16.04 LTS.
 
 Required software:
 
-- Python 3.6 or higher
-- [Pipenv](http://docs.pipenv.org/en/latest/) is not strictly required, but recommended
+- A Conda3 distribution (i.e. [Anaconda](https://docs.anaconda.com/anaconda/install/)
+or [Miniconda](https://conda.io/miniconda.html))
 - [AWS](https://aws.amazon.com/) credentials or a local GPU capable of running
 [CUDA](https://www.geforce.com/hardware/technology/cuda) computations.
-- [GCC](https://gcc.gnu.org/) 4.9 or later ([clang](https://clang.llvm.org/) is not yet 
-supported, but I will be looking into that)
-- [CMake](https://cmake.org/) 3.3 or higher
-- Development package for [libzmq3](https://packages.ubuntu.com/search?keywords=libzmq3-dev),
-from your favorite package manager.
 
-If you choose to run `csaopt` without `pipenv` and a virtual environment, you
-need to make sure you manually install the required Python packages, e.g. by
-using `pip`. You can find the exact list of dependencies in the `[packages]`
-section of the [Pipfile](Pipfile), and the required versions in the
-[Pipfile.lock](Pipfile.lock).
-
-A special note regarding `zmq`. The guys from `zeromq` pulled off a nice stunt,
-as the [pyzmq](https://github.com/zeromq/pyzmq) package will try to build it's
-own `libzmq` Python extension if it doesn't detect `libzmq` on your system.
-Make sure to manually install [Cython](http://cython.org/) if you need to rely
-on `pyzmq` building the extension.
 
 ## Development
 
-Currently, the python development is based on
-[pipenv](https://github.com/kennethreitz/pipenv) for
-dependencies and the virtual environment. The C++ parts are
-developed using CMake.
+Formerly based on [pipenv](https://github.com/pypa/pipenv) (which is awesome),
+CSAOpt now uses Conda for package management.
+Currently, there is no separate development environment, although this would
+certainly be possible. So go ahead and
+
+```bash
+git clone https://github.com/d53dave/csaopt && cd csaopt
+conda env create
+source activate csaopt
+```
+
+for development.
+
+Development of CSAOpt happened in VSCode, and it's required to set 
+
+- `python.venvPath` to the venv path (see output of `conda env list`)
+- `python.pythonPath` to `<your_venv_path>/bin/python`
+
+for it to pick up the right interpreter and installed packages.
 
 ### Running the Test Suite
 
-From outside of the `virtualenv` the test suite can be executed from the project
-root using
-
-```bash
-pipenv run py.test -v tests
-```
-
-From inside the `virtualenv` (i.e. after executing `pipenv shell`), the suite
-can be executed using
+From inside the `virtualenv` (i.e. after executing `source active csaopt`), the
+suite can be executed using
 
 ```bash
 pytest
@@ -110,7 +102,9 @@ The test suite is activated by setting a environment variable called
 value.
 
 After setting the appropriate environment variables, the whole suite can be
-executed and will include the end-to-end tests (see above). If you want to run
+executed and will include the end-to-end tests (see above). 
+
+If you want to run
 just the end-to-end tests, you can use the following command from the
 `virtualenv`:
 
@@ -168,12 +162,15 @@ use it).~~
 > 0.2.0 Change to Numba for CUDA computations
 
 With v0.2.0 the remaining `C++` code (i.e. directly interfacing with CUDA)
-will be thrown out in favor of [Numba](https://github.com/numba/numba). 
-This will imply a switch from `pipenv` to `conda`, since I don't want to 
-compile llvmlite for the deployment. This will also move much closer to 
-the initial goal of using a single programming language for all components
-of CSAOpt, and Python is a much nicer language than C++, in my opinion.
+will be thrown out in favor of [Numba](https://github.com/numba/numba).
+This will imply a switch from `pipenv` to `conda`, which is unfortunate, because
+pipenv is really nice, IMHO. However, I don't want to compile llvmlite for the
+deployments and I certainly don't want to have separate environment managers for
+the different parts of this software.
 
+The move to numba will also allow the project to move much closer to the initial
+goal of using a single programming language for all components of CSAOpt, and
+Python is a much nicer language than C++11, in my opinion.
 
 > 0.1.0 Change to Python
 
