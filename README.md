@@ -1,4 +1,7 @@
-# CSAOpt - A Cloud GPU based Simulated Annealing Optimization Framework. [![Build Status](https://travis-ci.org/d53dave/csaopt.svg?branch=master)](https://travis-ci.org/d53dave/csaopt) [![Coverage Status](https://coveralls.io/repos/github/d53dave/csaopt/badge.svg?branch=master)](https://coveralls.io/github/d53dave/csaopt?branch=master)
+# CSAOpt - A Cloud GPU based Simulated Annealing Optimization Framework.
+
+[![Build Status](https://travis-ci.org/d53dave/csaopt.svg?branch=master)](https://travis-ci.org/d53dave/csaopt)
+[![Coverage Status](https://coveralls.io/repos/github/d53dave/csaopt/badge.svg?branch=master)](https://coveralls.io/github/d53dave/csaopt?branch=master)
 
 The main premise of this framework is that a user provides the implementation
 for an abstract base class that describes the *standard* way of doing Simulated
@@ -24,7 +27,7 @@ software is provided **as is** and should be handled with the appropriate care.
 
 ## Configuration
 
-The configuration is based on [HOCON](https://github.com/typesafehub/config/blob/master/HOCON.md) 
+The configuration is based on [HOCON](https://github.com/typesafehub/config/blob/master/HOCON.md)
 (typesafe/lightbend) and integrated with the excellent [pyhocon](https://github.com/chimpler/pyhocon).
 The main configuration (i.e. configuration for running the software) is located
 in `conf/csaopt.conf`. In addition, there is an internal configuration file
@@ -45,11 +48,12 @@ Required software:
 
 - Python 3.6 or higher
 - [Pipenv](http://docs.pipenv.org/en/latest/) is not strictly required, but recommended
-- [AWS](https://aws.amazon.com/) credentials or a local GPU capable of running [CUDA](https://www.geforce.com/hardware/technology/cuda) computations.
+- [AWS](https://aws.amazon.com/) credentials or a local GPU capable of running
+[CUDA](https://www.geforce.com/hardware/technology/cuda) computations.
 - [GCC](https://gcc.gnu.org/) 4.9 or later ([clang](https://clang.llvm.org/) is not yet 
 supported, but I will be looking into that)
 - [CMake](https://cmake.org/) 3.3 or higher
-- Development package for [libzmq3](https://packages.ubuntu.com/search?keywords=libzmq3-dev), 
+- Development package for [libzmq3](https://packages.ubuntu.com/search?keywords=libzmq3-dev),
 from your favorite package manager.
 
 If you choose to run `csaopt` without `pipenv` and a virtual environment, you
@@ -71,7 +75,7 @@ Currently, the python development is based on
 dependencies and the virtual environment. The C++ parts are
 developed using CMake.
 
-#### Running the Test Suite
+### Running the Test Suite
 
 From outside of the `virtualenv` the test suite can be executed from the project
 root using
@@ -89,7 +93,7 @@ pytest
 py.test
 ```
 
-#### End-to-End Test
+### End-to-End Test
 
 The end-to-end test suite is disabled by default, since it requires a complete
 setup, i.e. including AWS credentials. Therefore, running the test will incur
@@ -102,7 +106,8 @@ variables, as documented in [awstools.py](app/aws/awstools.py).
 
 The test suite is activated by setting a environment variable called
 `CSAOPT_RUN_E2E`. The contents are irrelevant, it should evaluate to a
-[truthy value inside Python](https://docs.python.org/3/library/stdtypes.html#truth-value-testing).
+[truthy](https://docs.python.org/3/library/stdtypes.html#truth-value-testing)
+value.
 
 After setting the appropriate environment variables, the whole suite can be
 executed and will include the end-to-end tests (see above). If you want to run
@@ -134,8 +139,11 @@ fulfill the 3 requirements stated above. Additionally, both providers
 conveniently offer client libraries on PyPI. In case somebody wanted to add
 support for another provider, the usual procedure would be:
 
-1. Add client package from a repository (e.g. [google cloud from PyPI](https://pypi.python.org/pypi/google-cloud), [azure-mgmt-compute from conda-forge](https://anaconda.org/conda-forge/azure-mgmt-compute))
-2. Implement the [instancemanager interface](app/instancemanager/instancemanager.py), see [awstools.py](app/aws/awstools.py)
+1. Add client package from a repository (e.g. 
+[google cloud from PyPI](https://pypi.python.org/pypi/google-cloud),
+[azure-mgmt-compute from conda-forge](https://anaconda.org/conda-forge/azure-mgmt-compute))
+2. Implement the [instancemanager interface](app/instancemanager/instancemanager.py),
+see [awstools.py](app/aws/awstools.py)
 3. Add `elif` branch to create the instance manager based on the config (TODO: where is this?)
 4. Profit
 
@@ -143,8 +151,15 @@ support for another provider, the usual procedure would be:
 
 > Why is this project not using docker to provision the message queue and workers?
 
-It is! Things are a little bit awkward at the moment, since [NVidia uses their own tool called Docker Engine Utility for NVIDIA GPUs](https://github.com/NVIDIA/nvidia-docker), which is not yet compatible with [ECS](https://aws.amazon.com/ecs/) or other container services. This means that we still rely on pre-built AMIs (or however images are called on other cloud providers), but when nvidia-docker becomes ready to be used with ECS, this will rock. ~~That is a good question and it seems a very good use-case for docker, especially
-since NVidia [published an official Docker Engine Utility for NVIDIA GPUs](https://github.com/NVIDIA/nvidia-docker).
+It is! Things are a little bit awkward at the moment, since NVidia uses their
+[own tool](https://github.com/NVIDIA/nvidia-docker) called Docker Engine Utility
+for NVIDIA GPUs, which is not yet compatible with
+[ECS](https://aws.amazon.com/ecs/) or other container services. This means that
+we still rely on pre-built AMIs (or however images are called on other cloud 
+providers), but when nvidia-docker becomes ready to be used with ECS, this will
+rock. ~~That is a good question and it seems a very good use-case for docker,
+especially since NVidia published an official
+[Docker Engine Utility for NVIDIA GPUs](https://github.com/NVIDIA/nvidia-docker).
 I am considering throwing out ansible (which is not meant to be used the way I
 use it).~~
 
