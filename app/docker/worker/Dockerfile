@@ -2,7 +2,7 @@ FROM alpine:3.6
 LABEL maintainer="David Sere <dave@d53dev.net>"
 
 ARG kafka_url=localhost:9092
-ENV csaopt_dir=/opt/csaopt-zmq
+ENV csaopt_dir=/opt/csaopt-worker
 
 RUN apk update && apk add git
 RUN wget http://repo.continuum.io/miniconda/Miniconda3-3.7.0-Linux-x86_64.sh -O ~/miniconda.sh &&\
@@ -16,8 +16,8 @@ RUN git clone https://github.com/d53dave/csaopt-zmq.git $csaopt_dir
 
 WORKDIR $csaopt_dir
 
-RUN conda create -q --name csaopt-env --file environment.yml
-RUN source activate csaopt-env
+RUN conda create -q 
+RUN source activate csaopt-worker
 RUN python setup.py install
 
 RUN apk remove git
