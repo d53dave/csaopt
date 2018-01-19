@@ -6,10 +6,9 @@ from distutils import dir_util
 
 sys.path.insert(0, os.path.abspath('.'))
 
-from app.modelcompiler.modelcompiler import ModelCompiler
 from app.aws.awstools import AWSTools
+from app.msgqclient import Worker
 from app.msgqclient.client import QueueClient
-
 
 def copy_folder_contents(src, dest):
 

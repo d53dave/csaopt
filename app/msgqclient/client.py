@@ -42,7 +42,7 @@ class QueueClient:
         await self.producer.start()
 
         worker_timeout = conf['worker.timeout_seconds']
-        asyncio.Task(self._update_worker_timeout(worker_timeout))
+        asyncio.Task(self._update_worker_timeout(worker_timeout), loop=ioloop)
 
         return self
 
@@ -61,13 +61,14 @@ class QueueClient:
         try:
             # Consume messages
             async for msg in self.consumer:
-                log.debug("consumed: ", msg.topic, msg.partition, msg.offset,
-                          msg.key, msg.value, msg.timestamp)
+                log.debug('consumed: [{}, {}, {}, {}, {}, {}]'.format(msg.topic, msg.partition, msg.offset,
+                          msg.key, msg.value, msg.timestamp))
                 if msg.topic == self.management_recv_topic:
-                    pass
+                    if msg.key == 'heartbeat':
+                        worker_id = msg.value['worker_id']
+                        self._handle_worker_heartbeat(worker_id, msg.timestamp)
                 if msg.topic == self.data_recv_topic:
                     pass
-                print(msg)
         finally:
             # Will leave consumer group; perform autocommit if enabled.
             await self.consumer.stop()
@@ -76,16 +77,23 @@ class QueueClient:
     def _handle_worker_heartbeat(self, worker_id: str, hb_timestamp_utc: int):
         if worker_id in self.workers:
             self.workers[worker_id].update_heartbeat(hb_timestamp_utc)
+        else:
+            log.info('Worker [{}] joined.'.format(worker_id))
+            worker = Worker(worker_id)
+            worker.update_heartbeat(hb_timestamp_utc)
+            self.workers[worker_id] = worker
 
     async def _update_worker_timeout(self, worker_timeout_seconds):
         while True:
-            await asyncio.sleep(1)
-            new_workers: Dict[str, Worker] = {}
-            for worker in self.workers:
-                if worker.alive(worker_timeout_seconds):
-                    new_workers[worker.id] = worker
-                else:
-                    log.warn('Worker [{}] timed out.'.format(worker.id))
+            try:
+                await asyncio.sleep(0.5)
+            except asyncio.CancelledError as e:
+                log.info('Exiting update_worker_timeout loop')
+                raise e
+            for worker_id in list(self.workers.keys()):
+                if not self.workers[worker_id].alive(worker_timeout_seconds):
+                    del self.workers[worker_id]
+                    log.warn('Worker [{}] timed out.'.format(worker_id))
 
     async def _send_one(self, topic, key=None, value=None):
         try:
