@@ -3,28 +3,31 @@ import asyncio
 import arrow
 import context  # noqa
 
-from collections import namedtuple
-from queue import Queue
-from context import Worker, QueueClient
+from collections import namedtuple, deque
+from context import QueueClient
 
 
 FakeMessage = namedtuple('FakeMessage', ['topic', 'partition', 'offset',
                                          'key', 'value', 'timestamp'])
 
 
+management_topic = 'management.test.t'
+data_topic = 'data.test.t'
+
+
 class FakeConsumer:
     def __init__(self):
-        self.messages = Queue()
+        self.messages = deque([])
 
     async def add(self, msg):
-        self.messages.put(msg)
+        self.messages.appendleft(msg)
 
     async def __aiter__(self):
         return self
 
     async def __anext__(self):
-        if not self.messages.empty():
-            return self.messages.get()
+        if len(self.messages) > 0:
+            return self.messages.pop()
         else:
             raise StopAsyncIteration
 
@@ -58,21 +61,14 @@ def fake_producer(fake_consumer: FakeConsumer):
 
 @pytest.fixture
 def client(fake_consumer, fake_producer):
-    return QueueClient('management.t', 'data.t', fake_consumer, fake_producer)
+    return QueueClient(management_topic, data_topic, fake_consumer, fake_producer)
 
 
 @pytest.mark.asyncio
-async def test_lol(client: QueueClient, fake_producer: FakeProducer):
-    await fake_producer.send('data.t', 'lol', 'lol')
-    await client._consume()
-    assert True
-
-
-@pytest.mark.asyncio
-async def test_worker_join(client: QueueClient, event_loop):
+async def test_worker_join(client: QueueClient, fake_producer: FakeProducer, event_loop):
     event_loop.create_task(client._update_worker_timeout(worker_timeout_seconds=1))
-    worker_msg = {'worker_id': '12345'}
-    await client.producer.send('management.t', 'heartbeat', worker_msg)
+    worker_msg = {'worker_id': '12345', 'gpus': 1, 'hostname': 'host1'}
+    await fake_producer.send(management_topic, 'join', worker_msg)
     await client._consume()
 
     assert len(client.workers) == 1
@@ -81,11 +77,11 @@ async def test_worker_join(client: QueueClient, event_loop):
 
 @pytest.mark.timeout(10)
 @pytest.mark.asyncio
-async def test_worker_timeout(client: QueueClient, event_loop):
+async def test_worker_timeout(client: QueueClient, fake_producer: FakeProducer, event_loop):
     task = asyncio.ensure_future(
         client._update_worker_timeout(worker_timeout_seconds=0.5), loop=event_loop)
     worker_msg = {'worker_id': '12345'}
-    await client.producer.send('management.t', 'heartbeat', worker_msg)
+    await fake_producer.send(management_topic, 'join', worker_msg)
     await client._consume()
 
     assert len(client.workers) == 1
@@ -98,3 +94,61 @@ async def test_worker_timeout(client: QueueClient, event_loop):
     # and it seems to be exiting fine. However! the loop will still have
     # this task pending somewhere, even if we are waiting it to finish before
     # this method finishes. Is this a bug?
+
+
+@pytest.mark.timeout(10)
+@pytest.mark.asyncio
+async def test_worker_heartbeat(client: QueueClient, fake_producer: FakeProducer, event_loop):
+    worker_msg = {'worker_id': '12345'}
+    await fake_producer.send(management_topic, 'join', worker_msg)
+    await client._consume()
+
+    first_heartbeat: arrow.Arrow = client.workers['12345'].heartbeat
+
+    await asyncio.sleep(1)
+    await fake_producer.send(management_topic, 'heartbeat', worker_msg)
+    await client._consume()
+
+    second_heartbeat: arrow.Arrow = client.workers['12345'].heartbeat
+
+    assert second_heartbeat > first_heartbeat
+
+
+@pytest.mark.timeout(10)
+@pytest.mark.asyncio
+async def test_worker_sends_stats(client: QueueClient, fake_producer: FakeProducer):
+    worker_msg = {'worker_id': '12345'}
+    await fake_producer.send(management_topic, 'join', worker_msg)
+
+    stats = {'worker_id': '12345', 'gpu': {}, 'mem': {}, 'cpu': {}}
+    await fake_producer.send(management_topic, 'stats', stats)
+    await client._consume()
+
+    assert client.workers['12345'].latest_stats() == stats
+
+
+@pytest.mark.timeout(10)
+@pytest.mark.asyncio
+async def test_worker_sends_stats_no_stats(client: QueueClient, fake_producer: FakeProducer):
+    worker_msg = {'worker_id': '12345'}
+    await fake_producer.send(management_topic, 'join', worker_msg)
+    await client._consume()
+
+    assert client.workers['12345'].latest_stats() is None
+
+
+@pytest.mark.timeout(10)
+@pytest.mark.asyncio
+async def test_worker_sends_results_without_job(client: QueueClient):
+    worker_msg = {'worker_id': '12345'}
+    await fake_producer.send(management_topic, 'join', worker_msg)
+
+    await fake_producer.send(data_topic, 'full', {'states': [[1], [2]]})
+    
+
+
+@pytest.mark.timeout(10)
+@pytest.mark.asyncio
+async def test_worker_sends_results(client: QueueClient):
+    worker_msg = {'worker_id': '12345'}
+    await fake_producer.send(data_topic, 'join', worker_msg)
