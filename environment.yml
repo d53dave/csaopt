@@ -18,6 +18,7 @@ dependencies:
   - flake8
   - pytest-timeout
   - pytest-mock
+  - pytest-asyncio
   - pip:
     - aiokafka
     - lz4tools
