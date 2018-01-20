@@ -1,9 +1,7 @@
 import imp
 import logging
-import string
 import inspect
 
-from random import choice
 from types import ModuleType
 from typing import Dict, List, Callable, Any
 
@@ -12,11 +10,6 @@ from .model_validator import ModelValidator
 from ..model import Model, RequiredFunctions
 
 logger = logging.getLogger(__name__)
-
-
-def _random_str(length):
-    chars = string.ascii_letters + string.digits
-    return ''.join(choice(chars) for x in range(length))
 
 
 class ModelLoader():
