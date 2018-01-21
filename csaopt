@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 import sys
 import click
 import asyncio
+
+
+
+from app.model import Model
 from app.utils import internet_connectivity_available, get_configs
 from app.msgqclient.client import QueueClient
 from app.model_loader.model_loader import ModelLoader
+from app import Runner
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -14,22 +18,6 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
-
-
-async def go(loop, model, ctx):
-    client = await QueueClient.create(loop, ctx.obj['internal_conf'])
-    asyncio.Task(periodic(client))
-    await client._send_one('csaopt.data.in.t', value=model.to_dict())
-    await client._consume()
-
-
-async def periodic(client: QueueClient):
-    while True:
-        print('periodic')
-        await asyncio.sleep(1)
-        # await client._send_one('csaopt.data.in.t', key='TheKey', value={
-        #     u'a': [(1, 2, 3), True]
-        # })
 
 
 @click.group()
@@ -60,14 +48,10 @@ def run_opt(ctx, model, conf):
     print('Called run', ctx, model, conf)
     print('Has internet: ', internet_connectivity_available())
 
-    loader = ModelLoader({
-     'model_path': model
-    }, ctx.obj['internal_conf'])
-    model = loader.get_model()
+    runner = Runner()
+    runner.start()
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(go(loop, model, ctx))
-    loop.close()
+    runner.wait_for_complete()
 
 
 @cli.command(name='check',
