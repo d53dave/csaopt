@@ -2,7 +2,7 @@ import arrow
 
 from collections import deque
 from arrow import Arrow
-from typing import Dict, MutableSequence
+from typing import Dict, MutableSequence, NamedTuple, List
 from ..jobs import Job
 
 
@@ -11,7 +11,7 @@ class Worker():
 
     def __init__(self, id) -> None:
         self.id: str = id
-        self.jobs: Dict[Job] = {}
+        self.jobs: List[Job] = {}
         self.heartbeat = None
         self.stats: MutableSequence[Dict] = deque(maxlen=15)
 
@@ -35,3 +35,8 @@ class Worker():
         """Get the most recent stats object"""
         *_, last = self.stats
         return last
+
+
+class ActiveJob(NamedTuple):
+    job: Job
+    workers: List[Worker]
