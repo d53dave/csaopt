@@ -1,7 +1,7 @@
 import uuid
 import os
-import numpy as np
 
+from tinynumpy import tinynumpy as np
 from typing import Dict, List, Any
 
 from ..model import Model

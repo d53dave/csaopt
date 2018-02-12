@@ -20,6 +20,8 @@ dependencies:
   - pytest-mock
   - pytest-asyncio
   - pip:
+    - sty
+    - tinynumpy
     - aiokafka
     - lz4tools
     - xxhash
