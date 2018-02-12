@@ -1,15 +1,16 @@
-__all__ = ['modelcompiler', 'ansible', 'aws', 'msgqclient']
+__all__ = ['modelcompiler', 'aws', 'msgqclient']
 
 __version__ = '0.1.0'
+__appname__ = 'CSAOpt: Cloud based, GPU accelerated Simulated Annealing'
 
 import asyncio
 
 from asyncio.selector_events import BaseSelectorEventLoop
 from typing import Dict, Any
 
-from msgqclient.client import QueueClient
-from model_loader.model_loader import ModelLoader
-from model import Model
+from .msgqclient.client import QueueClient
+from .model_loader.model_loader import ModelLoader
+from .model import Model
 
 
 class Runner:
