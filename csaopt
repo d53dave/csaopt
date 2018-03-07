@@ -2,33 +2,30 @@
 
 import sys
 import click
-import asyncio
 
-from sty import fg, bg, ef, render, rs
-
-from app.model import Model
 from app.utils import internet_connectivity_available, get_configs
-from app.msgqclient.client import QueueClient
-from app.model_loader.model_loader import ModelLoader
 from app import Runner
 from app import __appname__ as csaopt_name
 from app import __version__ as csaopt_version
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-fg.csaopt_magenta = render.rgb_fg(199, 51, 147)
+# CSAOpt Magenta rgb(199, 51, 147)
+
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
+
 def magenta_print(txt: str) -> None:
-    print(fg.csaopt_magenta + txt + rs.all)
+    print('FIXME: ' + txt)
+
 
 @click.group()
 @click.version_option(version=csaopt_version, prog_name=csaopt_name)
 @click.pass_context
 def cli(ctx):
-    magenta_print(ef.bold + 'Welcome to CSAOpt v{}'.format(csaopt_version))
+    magenta_print('Welcome to CSAOpt v{}'.format(csaopt_version))
     try:
         internal_conf = get_configs('app/internal/csaopt-internal.conf')
         ctx.obj['internal_conf'] = internal_conf
