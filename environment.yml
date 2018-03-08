@@ -20,7 +20,7 @@ dependencies:
   - pytest-mock
   - pytest-asyncio
   - pip:
-    - sty
+    - coloredlogs
     - tinynumpy
     - aiokafka
     - lz4tools
