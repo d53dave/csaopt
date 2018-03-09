@@ -1,15 +1,10 @@
-language: python
-python:
-    - "3.5"
-    - "3.6"
+language: generic
 
 matrix:
   include:
     - os: linux
       dist: trusty
     - os: osx
-      language: generic
-      env: TRAVIS_PYTHON_VERSION=3.5
 
 
 before_script:
@@ -25,13 +20,13 @@ before_script:
   - conda update -q conda
   # Useful for debugging any issues with conda
   - conda info -a
-  - conda env create python=$TRAVIS_PYTHON_VERSION
-  - source activate csaopt
+  - conda env create --name csaopt-travisci
+  - conda activate csaopt-travici
   # not yet needed: - python setup.py install
 
 script: py.test --cov=app -v tests
 
 after_success:
-    - if [[ $TRAVIS_PYTHON_VERSION == 3.5* && $TRAVIS_OS_NAME == "linux" ]]; then
+    - if [[ $TRAVIS_OS_NAME == "linux" ]]; then
           coveralls;
       fi

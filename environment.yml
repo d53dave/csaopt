@@ -2,7 +2,7 @@ name: csaopt
 channels:
   - conda-forge
 dependencies:
-  - python=3.6
+  - python=3.6.4
   - boto3
   - msgpack-python
   - arrow
