@@ -2,8 +2,8 @@ import boto3
 from botocore.exceptions import ClientError
 import logging
 
-from ..instancemanager.instancemanager import _get_own_ip
 from ..instancemanager.instancemanager import InstanceManager
+from ..utils import get_own_ip
 
 logger = logging.getLogger()
 
@@ -92,7 +92,7 @@ class AWSTools(InstanceManager):
             logger.warn('Cannot remove security group, because none was created. Skipping')
 
     def _create_sec_group(self, name):
-        self.own_external_ip = _get_own_ip()
+        self.own_external_ip = get_own_ip()
         response = self.ec2.describe_vpcs()
         vpc_id = response.get('Vpcs', [{}])[0].get('VpcId', '')
 

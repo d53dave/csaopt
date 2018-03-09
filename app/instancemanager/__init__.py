@@ -1,6 +1,7 @@
 import ipaddress
 
 from typing import Union
+
 IpAddress = Union[ipaddress.IPv4Address, ipaddress.IPv6Address]
 
 

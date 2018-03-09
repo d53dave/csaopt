@@ -3,6 +3,9 @@ import random
 import string
 import abc
 
+from typing import List
+
+from . import Instance
 
 class InstanceManager():
     def __init__(self):
@@ -13,7 +16,7 @@ class InstanceManager():
         """Start and configure instances"""
 
     @abc.abstractmethod
-    def _get_running_instances(self):
+    def _get_running_instances(self) -> List[Instance]:
         """Returns the currently managed instances"""
 
     @abc.abstractmethod
