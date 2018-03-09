@@ -21,7 +21,7 @@ before_script:
   # Useful for debugging any issues with conda
   - conda info -a
   - conda env create --name csaopt-travisci
-  - source activate csaopt-travici
+  - source activate csaopt-travisci
   # not yet needed: - python setup.py install
 
 script: py.test --cov=app -v tests
