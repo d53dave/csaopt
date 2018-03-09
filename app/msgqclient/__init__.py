@@ -2,7 +2,7 @@ import arrow
 
 from collections import deque
 from arrow import Arrow
-from typing import Dict, MutableSequence, NamedTuple, List
+from typing import Dict, MutableSequence, NamedTuple, List, Optional
 from ..jobs import Job
 
 
@@ -31,10 +31,13 @@ class Worker():
         """Add a stats object to the deque of stats."""
         self.stats.append(stats)
 
-    def latest_stats(self) -> Dict:
+    def latest_stats(self) -> Optional[Dict]:
         """Get the most recent stats object"""
-        *_, last = self.stats
-        return last
+        try:
+            *_, last = self.stats
+            return last
+        except ValueError:
+            return None
 
 
 class ActiveJob(NamedTuple):

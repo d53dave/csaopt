@@ -139,7 +139,7 @@ async def test_worker_sends_stats_no_stats(client: QueueClient, fake_producer: F
 
 @pytest.mark.timeout(10)
 @pytest.mark.asyncio
-async def test_worker_sends_results_without_job(client: QueueClient):
+async def test_worker_sends_results_without_job(client: QueueClient, fake_producer: FakeProducer):
     worker_msg = {'worker_id': '12345'}
     await fake_producer.send(management_topic, 'join', worker_msg)
 
@@ -149,6 +149,6 @@ async def test_worker_sends_results_without_job(client: QueueClient):
 
 @pytest.mark.timeout(10)
 @pytest.mark.asyncio
-async def test_worker_sends_results(client: QueueClient):
+async def test_worker_sends_results(client: QueueClient, fake_producer: FakeProducer):
     worker_msg = {'worker_id': '12345'}
     await fake_producer.send(data_topic, 'join', worker_msg)
