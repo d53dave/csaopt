@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/d53dave/csaopt.svg?branch=master)](https://travis-ci.org/d53dave/csaopt)
 [![Coverage Status](https://coveralls.io/repos/github/d53dave/csaopt/badge.svg?branch=master)](https://coveralls.io/github/d53dave/csaopt?branch=master)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fd53dave%2Fcsaopt.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fd53dave%2Fcsaopt?ref=badge_shield)
 
 The main premise of this framework is that a user provides the implementation
 for an abstract base class that describes the *standard* way of doing Simulated
@@ -204,3 +205,7 @@ C++ prototype in this repository was commit [6c922f](https://github.com/d53dave/
 ² There are plans to move to [ECS](https://aws.amazon.com/ecs/) once ECS
 supports nvidia-docker **or** docker allows more capabilities in plugins so that
 nvidia-docker can provide a proper docker plugin.
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fd53dave%2Fcsaopt.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fd53dave%2Fcsaopt?ref=badge_large)
