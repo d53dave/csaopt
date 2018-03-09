@@ -2,17 +2,22 @@ language: python
 python:
     - "3.5"
     - "3.6"
-    - "3.7dev"
-    - "pypy3.5"
 
 matrix:
   include:
     - os: linux
       dist: trusty
     - os: osx
+      language: generic
+      env: TRAVIS_PYTHON_VERSION=3.5
+
 
 before_script:
-  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh;
+    else
+      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+    fi
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - hash -r
@@ -20,7 +25,7 @@ before_script:
   - conda update -q conda
   # Useful for debugging any issues with conda
   - conda info -a
-  - conda env create
+  - conda env create python=$TRAVIS_PYTHON_VERSION
   - source activate csaopt
   # not yet needed: - python setup.py install
 

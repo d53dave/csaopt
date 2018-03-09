@@ -12,14 +12,14 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.job import Job
 from asyncio.selector_events import BaseSelectorEventLoop
 from typing import Dict, Any, Optional, List
-from sty import fg, ef, render, rs
+from sty import fg, ef, renderer, rs
 
 from .msgqclient.client import QueueClient
 from .model_loader.model_loader import ModelLoader
 from .model import Model
 
 logger = logging.getLogger('csaopt.Runner')
-fg.csaopt_magenta = render.rgb_fg(199, 51, 147)
+fg.csaopt_magenta = renderer.rgb_fg(199, 51, 147)
 
 
 class ConsolePrinter:
@@ -68,9 +68,10 @@ class Runner:
         self.loop = asyncio.get_event_loop()
 
         # Get, build and validate Model
-        loader = ModelLoader({'model_path': model_path},
-                             ctx_obj['internal_conf'])
-        self.model = loader.get_model()
+        # loader = ModelLoader({'model_path': model_path},
+        #                     ctx_obj['internal_conf'])
+        # self.model = loader.get_model()
+        self.model = None
 
         # Get cloud config, create instance manager
         self.cloud_config: Dict[str, str] = {}

@@ -8,6 +8,7 @@ from typing import Dict, List, Callable, Any
 from . import ValidationError
 from .model_validator import ModelValidator
 from ..model import Model, RequiredFunctions
+from ..utils import random_str
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,7 @@ class ModelLoader():
     def __init__(self, conf, internal_conf) -> None:
         self.model_path = conf['model_path']
 
-        model_name = conf.get('model.name', 'optimization_' + _random_str(8))
+        model_name = conf.get('model.name', 'optimization_' + random_str(8))
         self.model_module: ModuleType = self._create_module(model_name,
                                                             self.model_path)
 
