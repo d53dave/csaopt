@@ -19,7 +19,7 @@ from .model_loader.model_loader import ModelLoader
 from .model import Model
 
 logger = logging.getLogger('csaopt.Runner')
-fg.csaopt_magenta = renderer.rgb_fg((199, 51, 147))
+fg.set('csaopt_magenta', 'rgb', (199, 51, 147))
 
 
 class ConsolePrinter:
