@@ -6,9 +6,12 @@ __appname__ = 'CSAOpt: Cloud based, GPU accelerated Simulated Annealing'
 import asyncio
 import logging
 import shutil
+import sys
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.job import Job
 from asyncio.selector_events import BaseSelectorEventLoop
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
 from sty import fg, ef, render, rs
 
 from .msgqclient.client import QueueClient
@@ -23,18 +26,28 @@ class ConsolePrinter:
 
     def __init__(self) -> None:
         self.termsize = shutil.get_terminal_size((80, 20))
-        self.last_line = ''
+        self.last_line: str = ''
+        self.has_scheduled_print: bool = False
+        self.print_job: Optional[Job] = None
+        self.scheduler: AsyncIOScheduler = AsyncIOScheduler()
+        self.scheduler.start()
+        self.spinner: List[str] = ['◣', '◤', '◥', '◢']
 
     def print(self, txt: str) -> None:
         self.last_line = txt
+        sys.stdout.write(txt + rs.all)
 
     def print_magenta(self, txt: str) -> None:
-        self.print(fg.csaopt_magenta + txt + rs.all)
+        self.print(fg.csaopt_magenta + txt)
 
     def print_with_spinner(self, txt: str) -> None:
         # Check if log level > info, skip spinner if so
         # Truncate to console width to fit spinner
-        pass
+        if self.print_job is not None:
+            self.print_job.cancel()
+
+        self.print_job = self.scheduler.add_job(
+            lambda: self.print(txt), 'interval', seconds=0.4)
 
     def last_line_succeeded(self) -> None:
         # If log level > info, just re-print with 'done.'
@@ -48,7 +61,7 @@ class ConsolePrinter:
 
 
 class Runner:
-    def __init__(self, model_path: str, ctx: Dict[str, Any]) -> None:
+    def __init__(self, model_path: str, ctx_obj: Dict[str, Any]) -> None:
         self.console_printer = ConsolePrinter()
         self.console_printer.print_magenta(
             ef.bold + 'Welcome to CSAOpt v{}'.format(__version__))
@@ -56,7 +69,7 @@ class Runner:
 
         # Get, build and validate Model
         loader = ModelLoader({'model_path': model_path},
-                             ctx.obj['internal_conf'])
+                             ctx_obj['internal_conf'])
         self.model = loader.get_model()
 
         # Get cloud config, create instance manager
