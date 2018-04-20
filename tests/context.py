@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.abspath('.'))
 from app.aws.awstools import AWSTools
 from app.msgqclient import Worker
 from app.msgqclient.client import QueueClient
+from app.utils import get_own_ip
 
 def copy_folder_contents(src, dest):
 
