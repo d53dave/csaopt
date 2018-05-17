@@ -4,6 +4,7 @@ import logging
 from botocore.exceptions import ClientError
 from typing import List, Dict, Any
 
+from . import Instance
 from ..instancemanager.instancemanager import InstanceManager
 from ..utils import get_own_ip
 
@@ -31,9 +32,7 @@ class AWSTools(InstanceManager):
 
     """
 
-    AwsInstance = Dict[str, Any]
-
-    def __init__(self, config, internal_conf):
+    def __init__(self, config, internal_conf) -> None:
         if config['cloud.aws.region'] is not None:
             self.region = config['cloud.aws.region'] 
         else:
@@ -53,12 +52,12 @@ class AWSTools(InstanceManager):
 
 
         self.ec2_client = ec2_resource.meta.client
-        self.instances: List[AwsInstance] = []
+        self.aws_instances = List[Dict[str, Any]] = []
         self.message_queue: AwsInstance = []
         self.security_group_id: str = ''
         self.worker_count: int = config['cloud.aws.worker_count']
 
-    def _provision_instances(self, count=2, **kwargs):
+    def _provision_instances(self, timeout_ms, count=2, **kwargs) -> List[str]:
         """Start and configure instances"""
 
         # MessageQueue
@@ -81,30 +80,28 @@ class AWSTools(InstanceManager):
                 InstanceType=instanceType,
                 SecurityGroupIds=[self.security_group_id]))
 
-    def _get_running_instances(self):
+    def _get_running_instances(self) -> List[Instance]:
         """Returns the currently managed instances"""
         # TODO: implement
 
-    def _terminate_instances(self):
+    def _terminate_instances(self, timeout_ms) -> None:
         """Terminate all instances managed by AWSTools"""
         instance_ids = [instance.id for instance in self.instances]
         self.ec2.instances.filter(InstanceIds=instance_ids).terminate()
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         """On enter, AWSTools prepares the AWS security group and spins up the required intances"""
         self._create_sec_group()
 
         # TODO: put all required parameters into kwargs
         self._provision_instances(count=self.worker_count)
+        self._wait_for_instances()
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
         """On exit, AWSTools terminates the started instances and removes security groups"""
         self._terminate_instances()
-
-    def get_running_instances(self):
-        return self.instances
-
-    def _remove_sec_group(self):
+    
+    def _remove_sec_group(self) -> None:
         """Removes the security group created by CSAOpt"""
 
         if self.security_group_id is not None:
@@ -116,7 +113,7 @@ class AWSTools(InstanceManager):
         else:
             logger.warn('Cannot remove security group, because none was created. Skipping')
 
-    def _create_sec_group(self, name):
+    def _create_sec_group(self, name) -> str:
         self.own_external_ip = get_own_ip()
         response = self.ec2.describe_vpcs()
         vpc_id = response.get('Vpcs', [{}])[0].get('VpcId', '')

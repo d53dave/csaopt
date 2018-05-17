@@ -1,36 +1,29 @@
-import requests
-import random
-import string
 import abc
 
 from typing import List
 
 from . import Instance
 
-class InstanceManager():
+class InstanceManager(abc.ABC):
     def __init__(self):
         pass
 
     @abc.abstractmethod
-    def _provision_instances(self, count=2, **kwargs):
-        """Start and configure instances"""
-    
-    @abc.abstractmethod
-    def _wait_for_instances(self, **kwargs):
-        """Start and configure instances"""
+    def _provision_instances(self, timeout_ms, count=2, **kwargs) -> List[str]:
+        """Start and configure instances, return Ids"""
 
     @abc.abstractmethod
     def _get_running_instances(self) -> List[Instance]:
         """Returns the currently managed instances"""
 
     @abc.abstractmethod
-    def _terminate_instances(self):
+    def _terminate_instances(self, timeout_ms) -> None:
         """Terminate managed instances"""
 
     @abc.abstractmethod
-    def __enter__(self):
+    def __enter__(self) -> None:
         """InstanceManager is a ContextManager"""
 
     @abc.abstractmethod
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
         """Cleanup resources on exit"""
