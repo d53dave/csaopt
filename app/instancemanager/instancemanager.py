@@ -14,6 +14,10 @@ class InstanceManager():
     @abc.abstractmethod
     def _provision_instances(self, count=2, **kwargs):
         """Start and configure instances"""
+    
+    @abc.abstractmethod
+    def _wait_for_instances(self, **kwargs):
+        """Start and configure instances"""
 
     @abc.abstractmethod
     def _get_running_instances(self) -> List[Instance]:
