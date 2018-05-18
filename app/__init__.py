@@ -17,10 +17,18 @@ from sty import fg, ef, renderer, rs
 from .msgqclient.client import QueueClient
 from .model_loader.model_loader import ModelLoader
 from .model import Model
+from .utils import get_configs
 
 logger = logging.getLogger('csaopt.Runner')
 fg.set('csaopt_magenta', 'rgb', (199, 51, 147))
 
+
+class Context:
+
+    def __init__(self, console_printer: ConsolePrinter, config, internal_config) -> None:
+        self.console_printer: ConsolePrinter = console_printer
+        self.config = config
+        self.internal_config = internal_config
 
 class ConsolePrinter:
 
@@ -61,7 +69,9 @@ class ConsolePrinter:
 
 
 class Runner:
-    def __init__(self, model_path: str, ctx_obj: Dict[str, Any]) -> None:
+    def __init__(self, model_path: str, conf_path: str, ctx_obj: Dict[str, Any]) -> None:
+        conf = get_configs(conf_path)
+        ctx = Context(ConsolePrinter(), conf, ctx.obj['internal_conf'])
         self.console_printer = ConsolePrinter()
         self.console_printer.print_magenta(
             ef.bold + 'Welcome to CSAOpt v{}'.format(__version__))
@@ -82,8 +92,8 @@ class Runner:
         """
         logger.debug('Running model {}'.format(self.model))
         
-    async def go(self, loop: BaseSelectorEventLoop, model: Model, ctx: object):
-        client = await QueueClient.create(loop, ctx.obj['internal_conf'])
+    async def go(self, loop: BaseSelectorEventLoop, model: Model, click_ctx: Any):
+        client = await QueueClient.create(loop, click_ctx.obj['internal_conf'])
         asyncio.Task(self.periodic(client))
         await client._consume()
 

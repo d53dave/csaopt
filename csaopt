@@ -39,7 +39,7 @@ def cli(ctx):
               help='Path to the CSAOpt config. If not provided, \'conf/csaopt.conf\' will be used')
 @click.pass_context
 def run_opt(ctx, model, conf):
-    runner = Runner(model, ctx.obj)
+    runner = Runner(model, conf, ctx.obj)
     runner.run()
 
     runner.wait_for_complete()
