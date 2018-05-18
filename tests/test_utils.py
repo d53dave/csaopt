@@ -1,5 +1,4 @@
-import pytest
-import context  #noqa
+import context  # noqa
 
 
 def test_get_own_ip():
