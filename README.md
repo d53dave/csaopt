@@ -1,17 +1,21 @@
-# CSAOpt - A Cloud GPU based Simulated Annealing Optimization Framework.
+# CSAOpt - Cloud based, GPU accelerated Simulated Annealing Framework
 
 [![Build Status](https://travis-ci.org/d53dave/csaopt.svg?branch=master)](https://travis-ci.org/d53dave/csaopt)
 [![Coverage Status](https://coveralls.io/repos/github/d53dave/csaopt/badge.svg?branch=master)](https://coveralls.io/github/d53dave/csaopt?branch=master)
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fd53dave%2Fcsaopt.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fd53dave%2Fcsaopt?ref=badge_shield)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fd53dave%2Fcsaopt.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fd53dave%2Fcsaopt?ref=badge_shield) [![Join Slack](https://img.shields.io/badge/style-join-green.svg?longCache=true&style=flat&label=slack&logo=slack)](https://join.slack.com/t/csaopt/shared_invite/enQtMzY2ODUyOTEwNDU1LTM3NDIxN2FiZGUzMjQ2YzdhZWIxY2JhZGVkODdlM2RhZWVhMmNjMjEwYTY3YzE2YTc4YmFlYTYyYjRkYzRmNGE)
 
-The main premise of this framework is that a user provides the implementation
-for an abstract base class that describes the *standard* way of doing Simulated
-Annealing while CSAOpt takes care of starting, configuring and running a
-massively parallel flavor of Simulated Annealing on GPUs hosted in the cloud¹.
+CSAOpt is a framework that enables users to run cloud based¹ GPU
+accelerated optimizations based on a massively parallel flavor of
+Simulated annealing. You simply provide a Python implementation of
+the functions used by Simulated Annealing and CSAOpt takes care of
+managing instances, deploying code, distributing work and collecting
+results.
 
 ## Usage
 
-TBD
+1. Configure your optimization run and cloud provider
+2. Model your domain
+3. Run CSAOpt for fun and profit
 
 ### DISCLAIMER
 
@@ -36,14 +40,18 @@ under `app/internal/csaopt-internal.conf`, which does not need to be modified
 under normal circumstances. A detailed description and listing of supported
 configuration will follow here.
 
+## Modelling
+
+TODO
+
 ## Requirements
 
 This software will not run on Windows out of the box, but it might run in the
 [WSL](https://blogs.msdn.microsoft.com/wsl). It will probably run on MacOS, but
 this is untested as of now. If you want to run it on a recent Linux
-distribution, you are in luck. Development was done on 
-[ElementaryOS](https://elementary.io/), while the deployed AWS instances are
-based on Ubuntu Server 16.04 LTS.
+distribution, you are in luck. Development was done on
+[ElementaryOS](https://elementary.io/) and MacOS, while the deployed AWS instances 
+are based on Ubuntu Server 16.04 LTS.
 
 Required software:
 
@@ -68,7 +76,7 @@ source activate csaopt
 
 for development.
 
-Development of CSAOpt happened in VSCode, and it's required to set 
+Development of CSAOpt happened in VSCode, and it's required to set
 
 - `python.venvPath` to the venv path (see output of `conda env list`)
 - `python.pythonPath` to `<your_venv_path>/bin/python`
@@ -146,13 +154,17 @@ see [awstools.py](app/aws/awstools.py)
 
 > Why is this project not using docker to provision the message queue and workers?
 
-It is! Things are a little bit awkward at the moment, since NVidia uses their
+It is! It also has the benefit of not requiring docker to be installed on any
+of your local machines since this is sometimes out of the users control.
+~~Things are a little bit awkward at the moment, since NVidia uses their
 [own tool](https://github.com/NVIDIA/nvidia-docker) called Docker Engine Utility
 for NVIDIA GPUs, which is not yet compatible with
 [ECS](https://aws.amazon.com/ecs/) or other container services. This means that
-we still rely on pre-built AMIs (or however images are called on other cloud 
+we still rely on pre-built AMIs (or however images are called on other cloud
 providers), but when nvidia-docker becomes ready to be used with ECS, this will
-rock. ~~That is a good question and it seems a very good use-case for docker,
+rock.~~
+
+ ~~That is a good question and it seems a very good use-case for docker,
 especially since NVidia published an official
 [Docker Engine Utility for NVIDIA GPUs](https://github.com/NVIDIA/nvidia-docker).
 I am considering throwing out ansible (which is not meant to be used the way I
@@ -202,10 +214,10 @@ C++ prototype in this repository was commit [6c922f](https://github.com/d53dave/
 
 ¹ Only AWS EC2 and local GPUs are currently supported. Pull requests are welcome.
 
-² There are plans to move to [ECS](https://aws.amazon.com/ecs/) once ECS
+² It turns out ECS does not add much value here and is therefore not used.
+~~There are plans to move to [ECS](https://aws.amazon.com/ecs/) once ECS
 supports nvidia-docker **or** docker allows more capabilities in plugins so that
-nvidia-docker can provide a proper docker plugin.
-
+nvidia-docker can provide a proper docker plugin.~~
 
 ## License
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fd53dave%2Fcsaopt.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fd53dave%2Fcsaopt?ref=badge_large)
