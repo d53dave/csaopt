@@ -3,10 +3,10 @@
 import sys
 import click
 
-from app.utils import internet_connectivity_available, get_configs
-from app import Runner
-from app import __appname__ as csaopt_name
-from app import __version__ as csaopt_version
+from csaopt.utils import internet_connectivity_available, get_configs
+from csaopt import Runner
+from csaopt import __appname__ as csaopt_name
+from csaopt import __version__ as csaopt_version
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])

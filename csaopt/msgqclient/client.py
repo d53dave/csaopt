@@ -6,7 +6,7 @@ from typing import Dict, Optional, Any
 from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
 from asyncio.selector_events import BaseSelectorEventLoop as EventLoop
 
-from app.jobs import Job
+from ..jobs import Job
 from . import Worker, ActiveJob
 
 log = logging.getLogger(__name__)

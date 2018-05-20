@@ -1,6 +1,6 @@
 import math
 
-from app.model import RandomDistribution, Precision
+from csaopt.model import RandomDistribution, Precision
 from typing import MutableSequence, Sequence, Any, Tuple
 from math import pi
 

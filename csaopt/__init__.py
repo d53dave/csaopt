@@ -23,13 +23,6 @@ logger = logging.getLogger('csaopt.Runner')
 fg.set('csaopt_magenta', 'rgb', (199, 51, 147))
 
 
-class Context:
-
-    def __init__(self, console_printer: ConsolePrinter, config, internal_config) -> None:
-        self.console_printer: ConsolePrinter = console_printer
-        self.config = config
-        self.internal_config = internal_config
-
 class ConsolePrinter:
 
     def __init__(self) -> None:
@@ -110,3 +103,11 @@ class Runner:
 
     def wait_for_complete(self) -> None:
         pass
+
+
+class Context:
+
+    def __init__(self, console_printer: ConsolePrinter, config, internal_config) -> None:
+        self.console_printer: ConsolePrinter = console_printer
+        self.config = config
+        self.internal_config = internal_config
