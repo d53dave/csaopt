@@ -24,7 +24,7 @@ before_script:
   - source activate csaopt-travisci
   # not yet needed: - python setup.py install
 
-script: py.test --cov=app -v tests
+script: py.test --cov=csaopt -v tests
 
 after_success:
     - if [[ $TRAVIS_OS_NAME == "linux" ]]; then
