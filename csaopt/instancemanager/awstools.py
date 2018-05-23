@@ -43,10 +43,10 @@ class AWSTools(InstanceManager):
         else:
             self.region = internal_conf['cloud.aws.region']
         
-        if config['aws.secret_key'] and config['aws.access_key']:
+        if config['cloud.aws.secret_key'] and config['cloud.aws.access_key']:
             self.ec2_resource: boto3.session.Session.resource = boto3.resource('ec2',
-                                                aws_access_key_id=config['aws.access_key'],
-                                                aws_secret_access_key=config['aws.secrey_key'], 
+                                                aws_access_key_id=config['cloud.aws.access_key'],
+                                                aws_secret_access_key=config['cloud.aws.secret_key'],
                                                 region_name=self.region)
             self.ec2_client = self.ec2_resource.meta.client
 
@@ -62,7 +62,7 @@ class AWSTools(InstanceManager):
         self.worker_count: int = config['cloud.aws.worker_count']
         self.default_message_queue_ami = internal_conf['cloud.aws.message_queue_ami']
         self.default_worker_ami = internal_conf['cloud.aws.worker_ami']
-        self.console_output = context.console_output
+        self.console_printer = context.console_printer
 
     def __provision_instances_with_timeout(self, count, **kwargs) -> None:
         imageId = kwargs.get('imageId', default=self.default_message_queue_ami)
@@ -136,10 +136,10 @@ class AWSTools(InstanceManager):
                 Description='Security Group for CSAOpt',
                 VpcId=vpc_id)
 
-            self.security_group_id = response['GroupId']
+            security_group_id = response['GroupId']
 
             data = self.ec2_client.authorize_security_group_ingress(
-                GroupId=self.security_group_id,
+                GroupId=security_group_id,
                 IpPermissions=[  # TODO: 80 and 22 are not needed here. Rather, these should be the zmq ports
                     {'IpProtocol': 'tcp',
                      'FromPort': 80,
@@ -156,7 +156,7 @@ class AWSTools(InstanceManager):
                 data
                 ))
             
-            return data.GroupId
+            return security_group_id
         except ClientError as e:
             logger.error('Could not create Security Group: {}', e)
             return None

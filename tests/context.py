@@ -10,6 +10,7 @@ from csaopt.instancemanager.awstools import AWSTools
 from csaopt.msgqclient import Worker
 from csaopt.msgqclient.client import QueueClient
 from csaopt.utils import get_own_ip
+from csaopt import ConsolePrinter, Context as AppContext
 
 def copy_folder_contents(src, dest):
 
