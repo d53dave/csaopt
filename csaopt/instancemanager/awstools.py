@@ -64,20 +64,20 @@ class AWSTools(InstanceManager):
         self.default_worker_ami = internal_conf['cloud.aws.worker_ami']
         self.console_printer = context.console_printer
 
-    def __provision_instances_with_timeout(self, count, **kwargs) -> None:
-        imageId = kwargs.get('imageId', default=self.default_message_queue_ami)
+    def _provision_instances_with_timeout(self, count, **kwargs) -> None:
+        imageId = kwargs.get('imageId_queue', self.default_message_queue_ami)
         instanceType = 'm4.large'  # TODO pull from config
-        self.message_queue = self.ec2_client.create_instances(ImageId=imageId,
+        self.message_queue = self.ec2_resource.create_instances(ImageId=imageId,
                                                               MinCount=1,
                                                               MaxCount=1,
                                                               InstanceType=instanceType)
 
         # Workers
-        imageId = kwargs.get('imageId', default=self.default_worker_ami)
+        imageId = kwargs.get('imageId_workers', self.default_worker_ami)
         # TODO pull from config
-        instanceType = kwargs.get('instanceType', default='t2.micro')
+        instanceType = kwargs.get('instanceType', 't2.micro')
 
-        self.instances = self.ec2_client.create_instances(
+        return self.ec2_resource.create_instances(
             ImageId=imageId,
             MinCount=count,
             MaxCount=count,
@@ -111,14 +111,15 @@ class AWSTools(InstanceManager):
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         """On exit, AWSTools terminates the started instances and removes security groups"""
         self._terminate_instances()
-        self._remove_sec_group()
+        self._remove_sec_group(self.security_group_id)
     
     def _remove_sec_group(self, group_id: str) -> None:
         """Removes the security group created by CSAOpt"""
 
         if group_id is not None:
+            print('Removing sec group', group_id)
             try:
-                self.ec2.delete_security_group(GroupId=self.security_group_id)
+                self.ec2_client.delete_security_group(GroupId=group_id)
                 logger.debug('Security group [{}] deleted'.format(group_id))
             except ClientError as e:
                 logger.error('Could not remove security group: {}'.format(e))
