@@ -63,14 +63,17 @@ class AWSTools(InstanceManager):
         self.default_message_queue_ami = internal_conf['cloud.aws.message_queue_ami']
         self.default_worker_ami = internal_conf['cloud.aws.worker_ami']
         self.console_printer = context.console_printer
+        self.timeout_ms = config['cloud.aws.timeout']
 
-    def _provision_instances_with_timeout(self, count, **kwargs) -> None:
+    def _provision_instances(self, timeout_ms, count=2, **kwargs) -> List[str]:
+        """Start and configure instances"""
+
         imageId = kwargs.get('imageId_queue', self.default_message_queue_ami)
         instanceType = 'm4.large'  # TODO pull from config
         self.message_queue = self.ec2_resource.create_instances(ImageId=imageId,
-                                                              MinCount=1,
-                                                              MaxCount=1,
-                                                              InstanceType=instanceType)
+                                                                MinCount=1,
+                                                                MaxCount=1,
+                                                                InstanceType=instanceType)
 
         # Workers
         imageId = kwargs.get('imageId_workers', self.default_worker_ami)
@@ -83,12 +86,6 @@ class AWSTools(InstanceManager):
             MaxCount=count,
             InstanceType=instanceType,
             SecurityGroupIds=[self.security_group_id])
-
-    def _provision_instances(self, timeout_ms, count=2, **kwargs) -> List[str]:
-        """Start and configure instances"""
-
-        # MessageQueue
-        pass
         
 
     def _get_running_instances(self) -> List[Instance]:
@@ -97,20 +94,26 @@ class AWSTools(InstanceManager):
 
     def _terminate_instances(self, timeout_ms) -> None:
         """Terminate all instances managed by AWSTools"""
-        instance_ids = [instance.id for instance in self.instances]
-        self.ec2_client.instances.filter(InstanceIds=instance_ids).terminate()
+        instance_ids = [instance.id for instance in self.aws_instances]
+        print('Terminating', instance_ids)
+        self.ec2_client.terminate_instances(
+            InstanceIds=instance_ids)
 
-    def __enter__(self) -> None:
+    def _wait_for_instances(self):
+        pass
+
+    def __enter__(self):
         """On enter, AWSTools prepares the AWS security group and spins up the required intances"""
         self._create_sec_group('csaopt_' + random_str(10))
 
         # TODO: put all required parameters into kwarg
-        self._provision_instances(count=self.worker_count)
+        self.aws_instances = self._provision_instances(count=self.worker_count, timeout_ms=self.timeout_ms)
         self._wait_for_instances()
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         """On exit, AWSTools terminates the started instances and removes security groups"""
-        self._terminate_instances()
+        self._terminate_instances(self.timeout_ms)
         self._remove_sec_group(self.security_group_id)
     
     def _remove_sec_group(self, group_id: str) -> None:
