@@ -1,6 +1,6 @@
 import abc
 
-from typing import List
+from typing import List, Tuple, Any
 
 from . import Instance
 
@@ -9,8 +9,8 @@ class InstanceManager(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def _provision_instances(self, timeout_ms, count=2, **kwargs) -> List[str]:
-        """Start and configure instances, return Ids"""
+    def _provision_instances(self, timeout_ms, count=2, **kwargs) -> Tuple[Any, Any]:
+        """Start and configure instances, return queue and list of workers"""
 
     @abc.abstractmethod
     def _get_running_instances(self) -> List[Instance]:
