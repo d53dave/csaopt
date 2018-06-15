@@ -11,8 +11,6 @@ from ..utils import get_own_ip, random_str
 
 logger = logging.getLogger()
 
-AwsInstance = Dict[str, Any]
-
 class AWSTools(InstanceManager):
     """The AWSTools class provides an abstraction over boto3 and EC2 for the use with CSAOpt
 
@@ -56,9 +54,9 @@ class AWSTools(InstanceManager):
             self.ec2_client: boto3.botocore.client.BaseClient = boto3.client('ec2', region=self.region)
 
 
-        self.aws_instances: List[Dict[str, Any]] = []
-        self.message_queue: AwsInstance = {}
-        self.security_group_id: str = ''
+        self.aws_instances: List[boto3.ec2.Instance] = []
+        self.message_queue: boto3.ec2.Instance = None
+        self.security_group_id: str = None
         self.worker_count: int = config['cloud.aws.worker_count']
         self.default_message_queue_ami = internal_conf['cloud.aws.message_queue_ami']
         self.default_worker_ami = internal_conf['cloud.aws.worker_ami']
