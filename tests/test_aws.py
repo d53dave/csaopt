@@ -55,19 +55,45 @@ def test_remote_security_group(awstools):
 
 def test_start_instances(awstools):
     with mock_ec2():
-        instances = awstools._provision_instances(2, imageId_queue='asd', imageId_worker='qwe')
+        awstools.security_group_id = 'test_sec_group'
+        queue, workers = awstools._provision_instances(timeout_ms=100, count=2)
 
-        assert len(instances) == 2
-        assert len(awstools.ec2_client.describe_instances()) == 2
+        assert len(workers) == 2
+        assert queue is not None
+        assert sum([len(r['Instances']) for r in awstools.ec2_client.describe_instances()['Reservations']]) == 3
+
+def test_get_instances(awstools):
+    with mock_ec2():
+        awstools.security_group_id = 'test_sec_group'
+        queue_and_workers = awstools._provision_instances(timeout_ms=100, count=4)
+        awstools.message_queue = queue_and_workers[0]
+        awstools.workers = queue_and_workers[1]
+
+
+        instances = awstools._get_running_instances()
+
+        assert len(instances) == 5
+
+        message_queue_count = 0
+        for instance in instances:
+            assert instance.public_ip is not None
+            assert instance.inst_id is not None
+
+            if instance.is_message_queue:
+                message_queue_count += 1
+
+        assert message_queue_count == 1
+
 
 def test_context_manager(context):
     with mock_ec2():
         responses.add(responses.GET, 'https://api.ipify.org/',
                       body='192.168.0.1', status=200)
         with AWSTools(context, context.config, context.internal_config) as awstools:
-            created_instances = awstools.aws_instances
+            worker_instance_ids = [w.id for w in awstools.workers]
+            queue_id = awstools.message_queue.id
             assert len(awstools.ec2_client.describe_instances()) == 2
         
         for instance in awstools.ec2_resource.instances.all():
-            if instance.id in created_instances:
-                assert instance.state == 48 # i.e. terminated
+            if instance.id in worker_instance_ids or instance.id == queue_id:
+                assert instance.state['Name'] == 'terminated'
