@@ -21,6 +21,10 @@ class InstanceManager(abc.ABC):
         """Terminate managed instances"""
 
     @abc.abstractmethod
+    def _run_start_scripts(self, timeout_ms) -> None:
+        """Run scripts to start queue and worker applications after startup"""
+
+    @abc.abstractmethod
     def __enter__(self) -> None:
         """InstanceManager is a ContextManager"""
 

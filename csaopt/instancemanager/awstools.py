@@ -105,6 +105,9 @@ class AWSTools(InstanceManager):
         for instance in self.workers:
             instance.wait_until_running()
 
+    def _run_start_scripts(self, timeout_ms) -> None:
+        raise NotImplementedError
+
     def __enter__(self):
         """On enter, AWSTools prepares the AWS security group and spins up the required intances"""
         self.security_group_id = self._create_sec_group('csaopt_' + random_str(10))
