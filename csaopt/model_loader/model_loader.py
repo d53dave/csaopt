@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class ModelLoader():
     def __init__(self, conf, internal_conf) -> None:
-        self.model_path = conf['model_path']
+        self.model_path = conf['model.path']
 
         model_name = conf.get('model.name', 'optimization_' + random_str(8))
         self.model_module: ModuleType = self._create_module(model_name,
@@ -25,6 +25,7 @@ class ModelLoader():
         errors: List[ValidationError] = []
 
         if not conf.get('model.skip_typecheck'):
+            logger.debug('Skipping typecheck')
             typecheck_error = ModelValidator.validate_typing(self.model_path)
             if typecheck_error is not None:
                 errors.append(typecheck_error)
@@ -55,6 +56,8 @@ class ModelLoader():
         return functions
 
     def get_model(self) -> Model:
+        if not self.model:
+            raise RuntimeError('Model not yet loaded')
         return self.model
 
     def _create_module(self, name: str, file: str) -> ModuleType:

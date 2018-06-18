@@ -14,12 +14,13 @@ class ModelValidator:
 
     empty_function_bytecode = _empty_function.__code__.co_code
 
+    # TODO: review these
     required_param_counts = {
         'distribution': 0,
         'precision': 0,
         'dimensions': 0,
         'initialize': 2,
-        'generate_next': 2,
+        'generate_next': 3,
         'cool': 1,
         'evaluate': 1,
         'acceptance_func': 3
@@ -53,6 +54,7 @@ class ModelValidator:
         return [
             ModelValidator._validate_missing_fun(name, fun),
             ModelValidator._validate_empty_fun(name, fun),
+            # TODO review if this is required
             ModelValidator._validate_return_statement(name, fun),
             ModelValidator._validate_fun_signature_len(name, fun, param_count)
         ]
