@@ -45,11 +45,11 @@ def copy_state(src: Sequence, dst: MutableSequence):
         dst[i] = src[i]
 
 
-def cool(old_temp: float, step_ratio: float, ctx: Sequence) -> float:
+def cool(old_temp: float) -> float:
     return old_temp * 0.96
 
 
-def acceptance_func(e1: float, e2: float, temp: float, ctx: Any) -> bool:
+def acceptance_func(e1: float, e2: float, temp: float) -> bool:
     return math.exp(-(e2 - e1) / temp) > 0.5
 
 
@@ -58,12 +58,13 @@ def empty_state(state: MutableSequence):
         state[i] = 0.0
 
 
-def initialize(state: MutableSequence, randoms: Sequence[float], ctx: Sequence) -> None:
+def initialize(state: MutableSequence, randoms: Sequence[float]) -> None:
     for i in range(len(randoms)):
         state[i] = randoms[i]
+    return
 
 
-def evaluate(state: Sequence, ctx: Any) -> float:
+def evaluate(state: Sequence) -> float:
     result = 0.0
     for i in range(m):  # sum from 0 to m-1
         t2 = 0.0
@@ -83,3 +84,4 @@ def evaluate(state: Sequence, ctx: Any) -> float:
 def generate_next(state: Sequence, new_state: MutableSequence, randoms: Sequence[float]) -> Any:
     for i in range(len(state)):
         new_state[i] = state[i] + randoms[i]
+    return
