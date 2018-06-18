@@ -18,6 +18,8 @@ from .msgqclient.client import QueueClient
 from .model_loader.model_loader import ModelLoader
 from .model import Model
 from .utils import get_configs
+from .instancemanager.instancemanager import InstanceManager
+from .instancemanager.awstools import AWSTools
 
 logger = logging.getLogger('csaopt.Runner')
 fg.set('csaopt_magenta', 'rgb', (199, 51, 147))
@@ -37,6 +39,10 @@ class ConsolePrinter:
     def print(self, txt: str) -> None:
         self.last_line = txt
         sys.stdout.write(txt + rs.all)
+    
+    def println(self, txt: str) -> None:
+        self.last_line = txt
+        sys.stdout.write(txt + rs.all + '\n')
 
     def print_magenta(self, txt: str) -> None:
         self.print(fg.csaopt_magenta + txt)
@@ -62,22 +68,33 @@ class ConsolePrinter:
 
 
 class Runner:
-    def __init__(self, model_path: str, conf_path: str, ctx_obj: Dict[str, Any]) -> None:
+    def __init__(self, model_path: str, conf_path: str, invocation_context: Dict[str, Any]) -> None:
         conf = get_configs(conf_path)
-        ctx = Context(ConsolePrinter(), conf, ctx.obj['internal_conf'])
+        internal_conf = invocation_context['internal_conf']
+        ctx = Context(ConsolePrinter(), conf, internal_conf)
         self.console_printer = ConsolePrinter()
         self.console_printer.print_magenta(
-            ef.bold + 'Welcome to CSAOpt v{}'.format(__version__))
+            ef.bold + 'Welcome to CSAOpt v{}\n'.format(__version__))
         self.loop = asyncio.get_event_loop()
-
+        conf['model']['path'] = model_path
         # Get, build and validate Model
-        # loader = ModelLoader({'model_path': model_path},
-        #                     ctx_obj['internal_conf'])
-        # self.model = loader.get_model()
-        self.model = None
+        
+        loader = ModelLoader(conf, internal_conf)
+        self.model = loader.get_model()
+        logger.debug('Model loaded succesfully.')
 
         # Get cloud config, create instance manager
         self.cloud_config: Dict[str, str] = {}
+        self.instancemanger = self._get_instance_manager(ctx, conf, internal_conf)
+
+    def _get_instance_manager(self, context, conf, internal_conf) -> InstanceManager:
+        cloud_platform = conf['cloud.platform']
+        if cloud_platform == 'aws':
+            return AWSTools(context, conf, internal_conf)
+        # elif cloud_platform == 'gcp' etc...
+            # return GCPTools()
+        else:
+            raise AttributeError('Cloud platform', cloud_platform, 'unrecognized.')
 
     def run(self) -> None:
         """

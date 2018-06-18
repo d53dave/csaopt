@@ -2,7 +2,6 @@
 
 import sys
 import click
-
 from csaopt.utils import internet_connectivity_available, get_configs
 from csaopt import Runner
 from csaopt import __appname__ as csaopt_name
@@ -20,7 +19,7 @@ def eprint(*args, **kwargs):
 @click.pass_context
 def cli(ctx):
     try:
-        internal_conf = get_configs('app/internal/csaopt-internal.conf')
+        internal_conf = get_configs('csaopt/internal/csaopt-internal.conf')
         ctx.obj['internal_conf'] = internal_conf
     except Exception as e:
         eprint('Could not load configs', e)
