@@ -98,7 +98,7 @@ class ConsolePrinter:
         if self.log_level == 'info':
             self.scheduler.remove_all_jobs()
             self.println(ConsolePrinter._format_to_width(
-                    self.columns, self.last_line, fg.green + ConsolePrinter.status_done))
+                    self.columns, self.last_line[0:len(self.last_line) - len(ConsolePrinter.status_done)], fg.green + ConsolePrinter.status_done))
 
     def spinner_failure(self) -> None:
         # If log level < warn, just re-print with 'Failed.'
@@ -106,8 +106,7 @@ class ConsolePrinter:
         if self.log_level == 'info':
             self.scheduler.remove_all_jobs()
             self.println(ConsolePrinter._format_to_width(
-                    # workaround for irregular line lengths: we remove a few chars from the end to 
-                    self.columns, self.last_line[0:len(self.last_line)-7], fg.red + ConsolePrinter.status_failed))
+                    self.columns, self.last_line[0:len(self.last_line) - len(ConsolePrinter.status_failed)], fg.red + ConsolePrinter.status_failed))
 
 
 
@@ -158,8 +157,10 @@ class Runner:
 
         self.console_printer.print_with_spinner(
             'Starting instances on {}'.format(conf['cloud.platform'].upper()))
-        with self._get_instance_manager(ctx, conf, internal_conf) as instancemanager:
-            pass
+        # with self._get_instance_manager(ctx, conf, internal_conf) as instancemanager:
+            # pass
+        await asyncio.sleep(5)
+        self.console_printer.spinner_success()
 
     def run(self) -> None:
         """
@@ -172,9 +173,9 @@ class Runner:
 
         if self.failures:
             self.console_printer.println(
-                fg.red + 'It seems there have been some errors 🌩')
+                fg.red + 'It seems there have been errors. 🌩')
         else:
-            self.console_printer.println(fg.green + 'All done ✨')
+            self.console_printer.println(fg.green + 'All done. ✨')
         pass
         
         
