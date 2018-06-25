@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 from typing import List, Dict, Any, Tuple
 
 from . import Instance
-from ..instancemanager.instancemanager import InstanceManager
+from .instancemanager import InstanceManager
 from ..utils import get_own_ip, random_str
 
 logger = logging.getLogger()
