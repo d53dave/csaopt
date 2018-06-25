@@ -7,12 +7,17 @@ import asyncio
 import logging
 import shutil
 import sys
+import time
+import subprocess
+import unicodedata
+import re
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.job import Job
 from asyncio.selector_events import BaseSelectorEventLoop
 from typing import Dict, Any, Optional, List
 from sty import fg, ef, renderer, rs
+from datetime import datetime
 
 from .msgqclient.client import QueueClient
 from .model_loader.model_loader import ModelLoader
@@ -25,9 +30,15 @@ logger = logging.getLogger('csaopt.Runner')
 fg.set('csaopt_magenta', 'rgb', (199, 51, 147))
 
 
+
 class ConsolePrinter:
 
-    def __init__(self) -> None:
+    status_done = 'Done.'
+    status_failed = 'Failed.'
+    __ANSI_escape_re = re.compile(r'[\x1B|\x1b]\[[0-?]*[ -/]*[@-~]')
+
+    def __init__(self, log_level='info') -> None:
+        self.current_spinner_index = 0
         self.termsize = shutil.get_terminal_size((80, 20))
         self.last_line: str = ''
         self.has_scheduled_print: bool = False
@@ -35,14 +46,33 @@ class ConsolePrinter:
         self.scheduler: AsyncIOScheduler = AsyncIOScheduler()
         self.scheduler.start()
         self.spinner: List[str] = ['◣', '◤', '◥', '◢']
+        self.log_level = log_level
+        _, columns = subprocess.check_output(['stty', 'size']).split()
+        self.columns = int(columns) if int(columns) < 80 else 80
+
+    @staticmethod
+    def _format_to_width(width: int, txt: str, status: str) -> str:
+        txt_len = len(ConsolePrinter._remove_special_seqs(txt))
+        status_len = len(ConsolePrinter._remove_special_seqs(status))
+        if (txt_len + status_len) > width:
+            return txt[0:(width - status_len - 4)] + '... ' + status
+        
+        return txt + ''.join([' '] * (width - status_len - txt_len)) + status
+
+    @staticmethod
+    def _remove_special_seqs(s):
+        no_ansi = ConsolePrinter.__ANSI_escape_re.sub('', s)
+        no_c = ''.join(c for c in no_ansi if unicodedata.category(c)[0] != 'C')
+        return no_c
 
     def print(self, txt: str) -> None:
-        self.last_line = txt
+        self.current_spinner_index = (self.current_spinner_index + 1) % len(self.spinner)
         sys.stdout.write(txt + rs.all)
+        sys.stdout.flush()
+        self.last_line = txt
     
     def println(self, txt: str) -> None:
-        self.last_line = txt
-        sys.stdout.write(txt + rs.all + '\n')
+        self.print(txt + rs.all + '\n')
 
     def print_magenta(self, txt: str) -> None:
         self.print(fg.csaopt_magenta + txt)
@@ -50,42 +80,49 @@ class ConsolePrinter:
     def print_with_spinner(self, txt: str) -> None:
         # Check if log level > info, skip spinner if so
         # Truncate to console width to fit spinner
-        if self.print_job is not None:
-            self.print_job.cancel()
+
+        self.scheduler.remove_all_jobs()
+        self.last_line = txt
 
         self.print_job = self.scheduler.add_job(
-            lambda: self.print(txt), 'interval', seconds=0.4)
+            lambda: self.print('\r' + ConsolePrinter._format_to_width(self.columns, txt, self.spinner[self.current_spinner_index] + '    ')),
+            'interval', 
+            seconds=0.42, 
+            id='print_job', 
+            max_instances=1, 
+            next_run_time=datetime.now()) # run now once, then periodically
 
-    def last_line_succeeded(self) -> None:
-        # If log level > info, just re-print with 'done.'
+    def spinner_success(self) -> None:
+        # If log level < warn, just re-print with 'Done.'
         # Truncate to console width to fit message
-        pass
+        if self.log_level == 'info':
+            self.scheduler.remove_all_jobs()
+            self.println(ConsolePrinter._format_to_width(
+                    self.columns, self.last_line, fg.green + ConsolePrinter.status_done))
 
-    def last_line_failed(self) -> None:
-        # If log level > info, just re-print with 'failed.'
+    def spinner_failure(self) -> None:
+        # If log level < warn, just re-print with 'Failed.'
         # Truncate to console width to fit message
-        pass
+        if self.log_level == 'info':
+            self.scheduler.remove_all_jobs()
+            self.println(ConsolePrinter._format_to_width(
+                    # workaround for irregular line lengths: we remove a few chars from the end to 
+                    self.columns, self.last_line[0:len(self.last_line)-7], fg.red + ConsolePrinter.status_failed))
+
 
 
 class Runner:
-    def __init__(self, model_path: str, conf_path: str, invocation_context: Dict[str, Any]) -> None:
-        conf = get_configs(conf_path)
-        internal_conf = invocation_context['internal_conf']
-        ctx = Context(ConsolePrinter(), conf, internal_conf)
+    def __init__(self, model_path: str, conf_path: str, invocation_options: Dict[str, Any]) -> None:
         self.console_printer = ConsolePrinter()
-        self.console_printer.print_magenta(
-            ef.bold + 'Welcome to CSAOpt v{}\n'.format(__version__))
+        self.conf_path = conf_path
+        self.model_path = model_path
+        self.invocation_options = invocation_options
         self.loop = asyncio.get_event_loop()
-        conf['model']['path'] = model_path
-        # Get, build and validate Model
-        
-        loader = ModelLoader(conf, internal_conf)
-        self.model = loader.get_model()
-        logger.debug('Model loaded succesfully.')
+        self.model = None
+        self.failures = None
 
-        # Get cloud config, create instance manager
-        self.cloud_config: Dict[str, str] = {}
-        self.instancemanger = self._get_instance_manager(ctx, conf, internal_conf)
+        self.console_printer.print_magenta(
+            ef.bold + 'Welcome to CSAOpt v{}\n\n'.format(__version__))
 
     def _get_instance_manager(self, context, conf, internal_conf) -> InstanceManager:
         cloud_platform = conf['cloud.platform']
@@ -94,13 +131,52 @@ class Runner:
         # elif cloud_platform == 'gcp' etc...
             # return GCPTools()
         else:
-            raise AttributeError('Cloud platform', cloud_platform, 'unrecognized.')
+            raise AttributeError('Cloud platform ' + cloud_platform + ' unrecognized.')
+
+    async def _run_async(self, loop):
+        self.console_printer.print_with_spinner('Loading Config')
+        try:
+            conf = get_configs(self.conf_path)
+            internal_conf = self.invocation_options['internal_conf']
+            ctx = Context(self.console_printer, conf, internal_conf)
+
+        except:
+            self.console_printer.spinner_failure()
+            raise
+
+        conf['model']['path'] = self.model_path
+        self.console_printer.spinner_success()
+        logger.debug('Running model {}'.format(self.model))
+        self.console_printer.print_with_spinner('Loading Model')
+        loader = ModelLoader(conf, internal_conf)
+        self.model = loader.get_model()
+        logger.debug('Model loaded succesfully.')
+        self.console_printer.spinner_success()
+
+        # Get cloud config, create instance manager
+        self.cloud_config: Dict[str, str] = {}
+
+        self.console_printer.print_with_spinner(
+            'Starting instances on {}'.format(conf['cloud.platform'].upper()))
+        with self._get_instance_manager(ctx, conf, internal_conf) as instancemanager:
+            pass
 
     def run(self) -> None:
         """
         
         """
-        logger.debug('Running model {}'.format(self.model))
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self._run_async(loop))
+        loop.close()
+
+        if self.failures:
+            self.console_printer.println(
+                fg.red + 'It seems there have been some errors 🌩')
+        else:
+            self.console_printer.println(fg.green + 'All done ✨')
+        pass
+        
         
     async def go(self, loop: BaseSelectorEventLoop, model: Model, click_ctx: Any):
         client = await QueueClient.create(loop, click_ctx.obj['internal_conf'])
@@ -116,9 +192,6 @@ class Runner:
             # })
 
     def cancel(self) -> None:
-        pass
-
-    def wait_for_complete(self) -> None:
         pass
 
 
