@@ -2,29 +2,34 @@ import pytest
 import responses
 
 from moto import mock_ec2
+from pyhocon import ConfigFactory
+from pyhocon.config_tree import ConfigTree
 from context import AWSTools, AppContext, ConsolePrinter
 
 
 @pytest.fixture
 def internal_conf():
-    return {
-        'cloud.aws.message_queue_ami': 'queue_ami_1234',
-        'cloud.aws.worker_ami': 'worker_ami_1234'
-    }
+    return ConfigFactory.parse_file('csaopt/internal/csaopt-internal.conf')
 
 @pytest.fixture
 def conf():
-    return {
-        'cloud.aws.region': 'eu-central-1',
-        'cloud.aws.secret_key': '123456',
-        'cloud.aws.access_key': '123456',
-        'cloud.aws.worker_count': 2,
-        'cloud.aws.timeout': 500
+    return ConfigFactory.parse_string("""
+        {
+            cloud {
+                aws {
+                    region = eu-central-1
+                    secret_key = a123456
+                    access_key = b123456
+                    worker_count = 2
+                    timeout = 500
+                }
+            }
         }
+        """)
 
 @pytest.fixture
 def context(conf, internal_conf):
-    return AppContext(ConsolePrinter(), conf, internal_conf)
+    return AppContext(ConsolePrinter(internal_conf), conf, internal_conf)
 
 @pytest.fixture
 def awstools(context):
@@ -65,10 +70,8 @@ def test_start_instances(awstools):
 def test_get_instances(awstools):
     with mock_ec2():
         awstools.security_group_id = 'test_sec_group'
-        queue_and_workers = awstools._provision_instances(timeout_ms=100, count=4)
-        awstools.message_queue = queue_and_workers[0]
-        awstools.workers = queue_and_workers[1]
-
+        awstools.message_queue, awstools.workers = awstools._provision_instances(
+            timeout_ms=100, count=4)
 
         instances = awstools._get_running_instances()
 
