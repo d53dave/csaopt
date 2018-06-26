@@ -37,7 +37,7 @@ class ConsolePrinter:
     status_failed = 'Failed.'
     __ANSI_escape_re = re.compile(r'[\x1B|\x1b]\[[0-?]*[ -/]*[@-~]')
 
-    def __init__(self, log_level='info') -> None:
+    def __init__(self, internal_config, log_level='info') -> None:
         self.current_spinner_index = 0
         self.termsize = shutil.get_terminal_size((80, 20))
         self.last_line: str = ''
@@ -47,8 +47,16 @@ class ConsolePrinter:
         self.scheduler.start()
         self.spinner: List[str] = ['◣', '◤', '◥', '◢']
         self.log_level = log_level
-        _, columns = subprocess.check_output(['stty', 'size']).split()
-        self.columns = int(columns) if int(columns) < 80 else 80
+    
+        max_columns = internal_config.get('console.width_max')
+        self.columns = internal_config.get('console.width_default')
+
+        try:
+            _, columns = subprocess.check_output(['stty', 'size']).split()
+            if columns < max_columns:
+                self.columns = columns 
+        except:
+            logger.debug('Could not get stty size, it seems there is no console available.')
 
     @staticmethod
     def _format_to_width(width: int, txt: str, status: str) -> str:
@@ -112,7 +120,9 @@ class ConsolePrinter:
 
 class Runner:
     def __init__(self, model_path: str, conf_path: str, invocation_options: Dict[str, Any]) -> None:
-        self.console_printer = ConsolePrinter()
+        internal_conf = invocation_options['internal_conf']
+
+        self.console_printer = ConsolePrinter(internal_conf)
         self.conf_path = conf_path
         self.model_path = model_path
         self.invocation_options = invocation_options
@@ -157,9 +167,8 @@ class Runner:
 
         self.console_printer.print_with_spinner(
             'Starting instances on {}'.format(conf['cloud.platform'].upper()))
-        # with self._get_instance_manager(ctx, conf, internal_conf) as instancemanager:
-            # pass
-        await asyncio.sleep(5)
+        with self._get_instance_manager(ctx, conf, internal_conf) as instancemanager:
+            await asyncio.sleep(500)
         self.console_printer.spinner_success()
 
     def run(self) -> None:
