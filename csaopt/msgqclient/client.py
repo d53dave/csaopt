@@ -11,7 +11,6 @@ from . import Worker, ActiveJob
 
 log = logging.getLogger(__name__)
 
-
 class QueueClient:
 
     @classmethod
@@ -38,6 +37,8 @@ class QueueClient:
             producer
         )
 
+        await self._wait_for_queue()
+
         await self.consumer.start()
         await self.producer.start()
 
@@ -57,6 +58,18 @@ class QueueClient:
         self.producer = producer
         self.workers: Dict[str, Worker] = {}
         self.submitted_jobs: Dict[str, ActiveJob] = {}
+
+    async def _wait_for_queue(self, timeout_ms=4000):
+        for i in range(0, timeout_ms, 250):
+            await asyncio.sleep(250)
+            try:
+                self.consumer.assignment()
+                break
+            except:
+                pass
+        else:
+            raise IOError('Wait for Queue timeout reached')
+
 
     async def _consume(self):
         try:
@@ -144,11 +157,13 @@ class QueueClient:
             pass
 
     async def submit_job(self, job: Job):
-        self.submitted_jobs[job.id] = (job, [])
-        # TODO: generate params and send job to workers
+        self.submitted_jobs[job.id] = ActiveJob(job=job, workers=[])
+        
+        self._send_one()
+
         pass
 
-    def get_results(self, job_id: str) -> Optional[Job]:
+    def get_results(self, job_id: str) -> Optional[ActiveJob]:
         results = self.submitted_jobs.get(job_id, None)
         if results is not None and results.job.finished is True:
             return results
