@@ -9,11 +9,11 @@ class InstanceManager(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def _provision_instances(self, timeout_ms, count=2, **kwargs) -> Tuple[Any, Any]:
+    def _provision_instances(self, timeout_ms, count=2, **kwargs) -> Tuple[Any, List[Any]]:
         """Start and configure instances, return queue and list of workers"""
 
     @abc.abstractmethod
-    def _get_running_instances(self) -> List[Instance]:
+    def _get_running_instances(self) -> Tuple[Instance, List[Instance]]:
         """Returns the currently managed instances"""
 
     @abc.abstractmethod
@@ -27,6 +27,7 @@ class InstanceManager(abc.ABC):
     @abc.abstractmethod
     def __enter__(self) -> None:
         """InstanceManager is a ContextManager"""
+        # TODO: this must update configs
 
     @abc.abstractmethod
     def __exit__(self, exc_type, exc_value, traceback) -> None:

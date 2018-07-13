@@ -20,7 +20,7 @@ class Local(InstanceManager):
         # TODO start instances with docker
         raise NotImplementedError
 
-    def _get_running_instances(self) -> List[Instance]:
+    def _get_running_instances(self) -> Tuple[Instance, List[Instance]]:
         """Returns the currently managed instances"""
         # TODO get docker instances and map to Instance
         raise NotImplementedError

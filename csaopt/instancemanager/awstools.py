@@ -87,19 +87,21 @@ class AWSTools(InstanceManager):
         # TODO pull from config
         instanceType = kwargs.get('instanceType', 't2.micro')
 
-        return (message_queue, self.ec2_resource.create_instances(
+        workers = self.ec2_resource.create_instances(
             ImageId=imageId,
             MinCount=count,
             MaxCount=count,
             InstanceType=instanceType,
-            SecurityGroupIds=[self.security_group_id]))
+            SecurityGroupIds=[self.security_group_id])
+    
+        return message_queue, workers
 
     def __map_ec2_instance(self, instance: Any) -> Instance:
         return Instance(instance.id, instance.public_ip_address, instance.image_id == self.message_queue_ami)
         
 
-    def _get_running_instances(self) -> List[Instance]:
-        return [self.__map_ec2_instance(self.message_queue)] + [self.__map_ec2_instance(i) for i in self.workers]
+    def _get_running_instances(self) -> Tuple[Instance, List[Instance]]:
+        return self.__map_ec2_instance(self.message_queue), [self.__map_ec2_instance(w) for w in self.workers]
 
     def _terminate_instances(self, timeout_ms) -> None:
         """Terminate all instances managed by AWSTools"""
