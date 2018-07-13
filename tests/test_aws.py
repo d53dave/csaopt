@@ -73,19 +73,10 @@ def test_get_instances(awstools):
         awstools.message_queue, awstools.workers = awstools._provision_instances(
             timeout_ms=100, count=4)
 
-        instances = awstools._get_running_instances()
+        queue, workers = awstools._get_running_instances()
 
-        assert len(instances) == 5
-
-        message_queue_count = 0
-        for instance in instances:
-            assert instance.public_ip is not None
-            assert instance.inst_id is not None
-
-            if instance.is_message_queue:
-                message_queue_count += 1
-
-        assert message_queue_count == 1
+        assert len(workers) == 4
+        assert queue is not None
 
 
 def test_context_manager(context):
