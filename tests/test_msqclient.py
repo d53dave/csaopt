@@ -11,8 +11,11 @@ FakeMessage = namedtuple('FakeMessage', ['topic', 'partition', 'offset',
                                          'key', 'value', 'timestamp'])
 
 
-management_topic = 'management.test.t'
-data_topic = 'data.test.t'
+# These are inverse, because they are from the point of view of the workers
+management_topic_recv = 'management.send.t'
+management_topic_send = 'management.recv.t'
+data_topic_recv = 'data.send.t'
+data_topic_send = 'data.recv.t'
 
 
 class FakeConsumer:
@@ -61,14 +64,14 @@ def fake_producer(fake_consumer: FakeConsumer):
 
 @pytest.fixture
 def client(fake_consumer, fake_producer):
-    return QueueClient(management_topic, data_topic, fake_consumer, fake_producer)
+    return QueueClient(management_topic_recv, data_topic_recv, management_topic_send, data_topic_send, fake_consumer, fake_producer)
 
 
 @pytest.mark.asyncio
 async def test_worker_join(client: QueueClient, fake_producer: FakeProducer, event_loop):
     event_loop.create_task(client._update_worker_timeout(worker_timeout_seconds=1))
     worker_msg = {'worker_id': '12345', 'gpus': 1, 'hostname': 'host1'}
-    await fake_producer.send(management_topic, 'join', worker_msg)
+    await fake_producer.send(management_topic_recv, 'join', worker_msg)
     await client._consume()
 
     assert len(client.workers) == 1
@@ -81,7 +84,7 @@ async def test_worker_timeout(client: QueueClient, fake_producer: FakeProducer, 
     task = asyncio.ensure_future(
         client._update_worker_timeout(worker_timeout_seconds=0.5), loop=event_loop)
     worker_msg = {'worker_id': '12345'}
-    await fake_producer.send(management_topic, 'join', worker_msg)
+    await fake_producer.send(management_topic_recv, 'join', worker_msg)
     await client._consume()
 
     assert len(client.workers) == 1
@@ -100,13 +103,13 @@ async def test_worker_timeout(client: QueueClient, fake_producer: FakeProducer, 
 @pytest.mark.asyncio
 async def test_worker_heartbeat(client: QueueClient, fake_producer: FakeProducer, event_loop):
     worker_msg = {'worker_id': '12345'}
-    await fake_producer.send(management_topic, 'join', worker_msg)
+    await fake_producer.send(management_topic_recv, 'join', worker_msg)
     await client._consume()
 
     first_heartbeat: arrow.Arrow = client.workers['12345'].heartbeat
 
     await asyncio.sleep(1)
-    await fake_producer.send(management_topic, 'heartbeat', worker_msg)
+    await fake_producer.send(management_topic_recv, 'heartbeat', worker_msg)
     await client._consume()
 
     second_heartbeat: arrow.Arrow = client.workers['12345'].heartbeat
@@ -118,10 +121,10 @@ async def test_worker_heartbeat(client: QueueClient, fake_producer: FakeProducer
 @pytest.mark.asyncio
 async def test_worker_sends_stats(client: QueueClient, fake_producer: FakeProducer):
     worker_msg = {'worker_id': '12345'}
-    await fake_producer.send(management_topic, 'join', worker_msg)
+    await fake_producer.send(management_topic_recv, 'join', worker_msg)
 
     stats = {'worker_id': '12345', 'gpu': {}, 'mem': {}, 'cpu': {}}
-    await fake_producer.send(management_topic, 'stats', stats)
+    await fake_producer.send(management_topic_recv, 'stats', stats)
     await client._consume()
 
     assert client.workers['12345'].latest_stats() == stats
@@ -131,7 +134,7 @@ async def test_worker_sends_stats(client: QueueClient, fake_producer: FakeProduc
 @pytest.mark.asyncio
 async def test_worker_sends_stats_no_stats(client: QueueClient, fake_producer: FakeProducer):
     worker_msg = {'worker_id': '12345'}
-    await fake_producer.send(management_topic, 'join', worker_msg)
+    await fake_producer.send(management_topic_recv, 'join', worker_msg)
     await client._consume()
 
     assert client.workers['12345'].latest_stats() is None
@@ -141,9 +144,9 @@ async def test_worker_sends_stats_no_stats(client: QueueClient, fake_producer: F
 @pytest.mark.asyncio
 async def test_worker_sends_results_without_job(client: QueueClient, fake_producer: FakeProducer):
     worker_msg = {'worker_id': '12345'}
-    await fake_producer.send(management_topic, 'join', worker_msg)
+    await fake_producer.send(management_topic_recv, 'join', worker_msg)
 
-    await fake_producer.send(data_topic, 'full', {'states': [[1], [2]]})
+    await fake_producer.send(data_topic_recv, 'full', {'states': [[1], [2]]})
     
 
 
@@ -151,4 +154,4 @@ async def test_worker_sends_results_without_job(client: QueueClient, fake_produc
 @pytest.mark.asyncio
 async def test_worker_sends_results(client: QueueClient, fake_producer: FakeProducer):
     worker_msg = {'worker_id': '12345'}
-    await fake_producer.send(data_topic, 'join', worker_msg)
+    await fake_producer.send(data_topic_recv, 'join', worker_msg)

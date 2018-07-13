@@ -7,6 +7,7 @@ from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
 from asyncio.selector_events import BaseSelectorEventLoop as EventLoop
 
 from ..jobs import Job
+from ..model import Model
 from . import Worker, ActiveJob
 
 log = logging.getLogger(__name__)
@@ -15,8 +16,11 @@ class QueueClient:
 
     @classmethod
     async def create(cls, ioloop: EventLoop, conf: Dict[str, Any]):
+        # TODO pull out all topics
         management_recv_topic = conf['kafka.topics.management_recv']
-        data_recv_topic = conf['kafka.topics.management_recv']
+        data_recv_topic = conf['kafka.topics.data_recv']
+        management_send_topic = conf['kafka.topics.management_send']
+        data_send_topic = conf['kafka.topics.data_send']
 
         consumer = AIOKafkaConsumer(
             [management_recv_topic, data_recv_topic],
@@ -33,6 +37,8 @@ class QueueClient:
         self = QueueClient(
             management_recv_topic,
             data_recv_topic,
+            management_send_topic,
+            data_send_topic,
             consumer,
             producer
         )
@@ -50,10 +56,14 @@ class QueueClient:
     def __init__(self,
                  management_recv_topic: str,
                  data_recv_topic: str,
+                 management_send_topic: str,
+                 data_send_topic: str,
                  consumer: AIOKafkaConsumer,
                  producer: AIOKafkaProducer) -> None:
         self.management_recv_topic: str = management_recv_topic
         self.data_recv_topic: str = data_recv_topic
+        self.management_send_topic: str = management_send_topic
+        self.data_send_topic: str = data_send_topic
         self.consumer = consumer
         self.producer = producer
         self.workers: Dict[str, Worker] = {}
@@ -93,7 +103,7 @@ class QueueClient:
                     if msg.key == 'result_values':
                         self._handle_job_values(worker_id, msg.value)
                 else:
-                    log.error('Received unrecognized message on queue: {}', msg)
+                    log.error('Received unrecognized message on queue: {}'.format(msg))
                     
         finally:
             # Will leave consumer group; perform autocommit if enabled.
@@ -157,10 +167,13 @@ class QueueClient:
             pass
 
     async def submit_job(self, job: Job):
-        self.submitted_jobs[job.id] = ActiveJob(job=job, workers=[])
+        self.submitted_jobs[job.id] = ActiveJob(job=job, workers=[], finished=False)
         
-        self._send_one()
+        # self._send_one(self.)
 
+        pass
+
+    async def deploy_model(self, model: Model):
         pass
 
     def get_results(self, job_id: str) -> Optional[ActiveJob]:

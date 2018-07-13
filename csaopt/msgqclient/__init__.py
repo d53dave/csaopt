@@ -9,9 +9,9 @@ from ..jobs import Job
 class Worker():
     """Wrapper class that keeps track of which workers are active and what jobs they are working on"""
 
-    def __init__(self, id) -> None:
+    def __init__(self, id: str) -> None:
         self.id: str = id
-        self.jobs: List[Job] = {}
+        self.jobs: List[ActiveJob] = []
         self.heartbeat = None
         self.stats: MutableSequence[Dict] = deque(maxlen=15)
 
@@ -43,3 +43,4 @@ class Worker():
 class ActiveJob(NamedTuple):
     job: Job
     workers: List[Worker]
+    finished: bool
