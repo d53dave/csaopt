@@ -40,8 +40,7 @@ def cli(ctx):
 def run_opt(ctx, model, conf):
     runner = Runner(model, conf, ctx.obj)
     runner.run()
-
-    runner.wait_for_complete()
+    runner.console_printer.print_magenta('Bye.\n')
 
 
 @cli.command(name='check',
