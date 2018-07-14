@@ -12,6 +12,7 @@ from . import Worker, ActiveJob
 
 log = logging.getLogger(__name__)
 
+
 class QueueClient:
 
     @classmethod
@@ -80,7 +81,6 @@ class QueueClient:
         else:
             raise IOError('Wait for Queue timeout reached')
 
-
     async def _consume(self):
         try:
             # Consume messages
@@ -104,11 +104,14 @@ class QueueClient:
                         self._handle_job_values(worker_id, msg.value)
                 else:
                     log.error('Received unrecognized message on queue: {}'.format(msg))
-                    
+
         finally:
             # Will leave consumer group; perform autocommit if enabled.
             await self.consumer.stop()
             await self.producer.stop()
+
+    def submit_job(self, job: Job):
+        pass
 
     def _handle_job_results(self, worker_id: str, results: Dict[str, Any]) -> None:
         job_id = results.get('job_id', None)
@@ -166,15 +169,11 @@ class QueueClient:
             # Wait for all pending messages to be delivered or expire.
             pass
 
-    async def submit_job(self, job: Job):
-        self.submitted_jobs[job.id] = ActiveJob(job=job, workers=[], finished=False)
-        
-        # self._send_one(self.)
-
-        pass
-
     async def deploy_model(self, model: Model):
         pass
+
+    async def model_deployed(self):
+        pass 
 
     def get_results(self, job_id: str) -> Optional[ActiveJob]:
         results = self.submitted_jobs.get(job_id, None)

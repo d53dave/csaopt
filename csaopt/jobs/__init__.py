@@ -2,7 +2,7 @@ import uuid
 import os
 
 from tinynumpy import tinynumpy as np
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 
 from ..model import Model
 
@@ -12,13 +12,17 @@ __all__ = ['jobmanager']
 class Job():
     def __init__(self, model: Model, opt_params: Dict[str, Any]) -> None:
         self.id = str(uuid.uuid4())
-        self.model = Model
+        self.model = model
         self.results: List[List[np.ndarray]] = []
         self.values: List[List[float]] = []
-        self.finished = False
+        self.completed = False
+        self.was_submitted = False
+
+    def get_best_results(self) -> Tuple[float, np.ndarray]:
+        pass
 
     def write_files(self, path: str, binary: bool = False) -> None:
-        suffix = 'bin' if binary else 'txt'
+        suffix: str = 'bin' if binary else 'txt'
 
         if(os.path.isdir(path)):
             for idx, result in enumerate(self.results):
