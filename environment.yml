@@ -15,12 +15,13 @@ dependencies:
   - coverage
   - coveralls
   - bumpversion
-  - flake8
+  - flake8=3.4.1
   - pytest-timeout
   - pytest-mock
   - pytest-asyncio
   - pip:
     - moto
+    - async-timeout
     - apscheduler
     - coloredlogs
     - sty
