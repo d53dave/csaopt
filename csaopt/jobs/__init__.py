@@ -19,7 +19,12 @@ class Job():
         self.was_submitted = False
 
     def get_best_results(self) -> Tuple[float, np.ndarray]:
-        pass
+        values_ndarr = np.ndarray(self.values)
+        ind = np.unravel_index(
+            np.argmin(values_ndarr, axis=None), values_ndarr.shape)
+        val_min = values_ndarr[ind]
+        best_res = self.results[ind]
+        return val_min, best_res
 
     def write_files(self, path: str, binary: bool = False) -> None:
         suffix: str = 'bin' if binary else 'txt'

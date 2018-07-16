@@ -10,7 +10,6 @@ import sys
 import subprocess
 import unicodedata
 import re
-import tinynumpy as np
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.job import Job as ApJob
@@ -196,17 +195,13 @@ class Runner:
             await jobmanager.wait_for_results()
 
             self.console_printer.print_with_spinner('Retrieving results')
-            results: List[List[np.ndarray]] = job.results
-            values: List[List[float]] = job.values
             self.console_printer.spinner_success()
 
             self.console_printer.print_with_spinner('Scanning for best result')
-            values_ndarr = np.ndarray(values)
-            ind = np.unravel_index(np.argmin(values_ndarr, axis=None), values_ndarr.shape)
-            val_min = values_ndarr[ind]
-            best_res = results[ind]
-
             # TODO: determine which worker reported this result
+            val_min, best_res = job.get_best_results()
+            self.console_printer.spinner_success()
+
             self.console_printer.println('Evaluated: {} State: {}'.format(val_min, best_res))
 
             if conf['TODO']:
