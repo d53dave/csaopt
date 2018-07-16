@@ -4,6 +4,7 @@ from typing import List, Tuple, Any
 
 from . import Instance
 
+
 class InstanceManager(abc.ABC):
     def __init__(self):
         pass
