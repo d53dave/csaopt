@@ -2,7 +2,7 @@ import boto3
 import logging
 
 from botocore.exceptions import ClientError
-from typing import List, Any, Tuple
+from typing import List, Any, Tuple, Dict
 
 from . import Instance
 from .instancemanager import InstanceManager
@@ -72,6 +72,15 @@ class AWSTools(InstanceManager):
         # TODO: this should be more fine-grained
         self.timeout_ms = config['cloud.aws.timeout']
 
+        data_base = internal_conf['cloud.aws.userdata_rel_path']
+        with open(data_base + '-kafka.sh', 'rb') as queue_data, open(data_base + '-worker.sh', 'rb') as worker_data:
+            self.user_data_scripts: Dict[str, bytes] = {
+                # 'queue': base64.encodebytes(queue_data.read()).decode('ascii'),
+                # 'worker': base64.encodebytes(worker_data.read()).decode('ascii')
+                'queue': queue_data.read(),
+                'worker': worker_data.read()
+            }
+
     def _provision_instances(self, timeout_ms, count=2, **kwargs) -> Tuple[Any, Any]:
         """Start and configure instances"""
 
@@ -80,6 +89,7 @@ class AWSTools(InstanceManager):
         message_queue = self.ec2_resource.create_instances(ImageId=imageId,
                                                            MinCount=1,
                                                            MaxCount=1,
+                                                           UserData=self.user_data_scripts['queue'],
                                                            InstanceType=instanceType)[0]
 
         # Workers
@@ -92,6 +102,7 @@ class AWSTools(InstanceManager):
             MinCount=count,
             MaxCount=count,
             InstanceType=instanceType,
+            UserData=self.user_data_scripts['worker'],
             SecurityGroupIds=[self.security_group_id])
 
         return message_queue, workers
