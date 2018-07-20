@@ -12,6 +12,7 @@ class Worker():
     def __init__(self, id: str) -> None:
         self.id: str = id
         self.jobs: List[ActiveJob] = []
+        self.model_deployed = False
         self.heartbeat = None
         self.stats: MutableSequence[Dict] = deque(maxlen=15)
 

@@ -97,7 +97,9 @@ class QueueClient:
                         self._handle_worker_join(worker_id, msg.timestamp)
                     elif msg.key == 'stats':
                         self._handle_worker_stats(worker_id, msg.value)
-                if msg.topic == self.data_recv_topic:
+                    elif msg.key == 'model':
+                        self._handle_model_deploy(worker_id)
+                elif msg.topic == self.data_recv_topic:
                     if msg.key == 'result_states':
                         self._handle_job_results(worker_id, msg.value)
                     if msg.key == 'result_values':
@@ -134,6 +136,7 @@ class QueueClient:
 
     def _handle_worker_join(self, worker_id: str, hb_timestamp_utc: int):
         if worker_id not in self.workers:
+            print('Worker joined:', worker_id)
             log.info('Worker [{}] joined.'.format(worker_id))
             worker = Worker(worker_id)
             worker.update_heartbeat(hb_timestamp_utc)
@@ -147,7 +150,14 @@ class QueueClient:
             self.workers[worker_id].add_stats(stats)
         else:
             log.warn(
-                'Worker [{}] tried to push stats but has not joined.'.format(worker_id)) 
+                'Worker [{}] tried to push stats but has not joined.'.format(worker_id))
+
+    def _handle_model_deploy(self, worker_id: str) -> None:
+        if worker_id in self.workers:
+            self.workers[worker_id].model_deployed = True
+        else:
+            log.warn(
+                'Worker [{}] tried to signal model deployed but has not joined.'.format(worker_id)) 
 
     async def _update_worker_timeout(self, worker_timeout_seconds):
         while True:
@@ -170,14 +180,14 @@ class QueueClient:
             pass
 
     async def deploy_model(self, model: Model):
-        pass
+        await self._send_one(self.management_send_topic, 'model', model.to_dict())
 
-    async def model_deployed(self):
-        pass 
+    def model_deployed(self):
+        return len(self.workers) > 0 and all(worker.model_deployed for worker in self.workers.values())
 
     def get_results(self, job_id: str) -> Optional[ActiveJob]:
         results = self.submitted_jobs.get(job_id, None)
-        if results is not None and results.job.finished is True:
+        if results is not None and results.job.completed is True:
             return results
         return None
 
