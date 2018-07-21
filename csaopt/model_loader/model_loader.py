@@ -14,28 +14,29 @@ logger = logging.getLogger(__name__)
 
 
 class ModelLoader():
-    def __init__(self, conf, internal_conf) -> None:
+    def __init__(self, conf, internal_conf, validator=ModelValidator()) -> None:
         self.model_path = conf['model.path']
 
         model_name = conf.get('model.name', 'optimization_' + random_str(8))
         self.model_module: ModuleType = self._create_module(model_name,
                                                             self.model_path)
+        self.model: Model = None
 
         functions: Dict[str, Callable] = self._extract_functions(self.model_module)
-        errors: List[ValidationError] = []
+        self.errors: List[ValidationError] = []
 
         if not conf.get('model.skip_typecheck'):
             logger.debug('Skipping typecheck')
-            typecheck_error = ModelValidator.validate_typing(self.model_path)
+            typecheck_error = validator.validate_typing(self.model_path)
             if typecheck_error is not None:
-                errors.append(typecheck_error)
+                self.errors.append(typecheck_error)
 
-        errors.extend(ModelValidator.validate_functions(functions))
+        self.errors.extend(validator.validate_functions(functions))
 
-        if len(errors) == 0:
+        if len(self.errors) == 0:
             self.model = self._create_model(model_name, self.model_module, functions)
         else:
-            logger.error('Validation failed for model `{}`: {}'.format(self.model_path, errors))
+            logger.error('Validation failed for model `{}`: {}'.format(self.model_path, self.errors))
 
     def _create_model(self, name: str, module: Any, functions: Dict[str, Callable]) -> Model:
         return Model(name,
@@ -56,8 +57,6 @@ class ModelLoader():
         return functions
 
     def get_model(self) -> Model:
-        if not self.model:
-            raise RuntimeError('Model not yet loaded')
         return self.model
 
     def _create_module(self, name: str, file: str) -> ModuleType:
