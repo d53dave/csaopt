@@ -10,6 +10,7 @@ import sys
 import subprocess
 import unicodedata
 import re
+from enum import Enum
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.job import Job as ApJob
@@ -124,20 +125,53 @@ class ConsolePrinter:
                     fg.red + ConsolePrinter.status_failed))
 
 
+class ExecutionType(Enum):
+    MultiModelMultiConf = 'MultiModelMultiConf'
+    SingleModelMultiConf = 'SingleModelMultiConf'
+    SingleModelSingleConf = 'SingleModelSingleConf'
+    MultiModelSingleConf = 'MultiModelSingleConf'
+
+
 class Runner:
-    def __init__(self, model_path: str, conf_path: str, invocation_options: Dict[str, Any]) -> None:
+
+    def __init__(self, model_paths: List[str], conf_paths: List[str], invocation_options: Dict[str, Any]) -> None:
         internal_conf = invocation_options['internal_conf']
 
         self.console_printer = ConsolePrinter(internal_conf)
-        self.conf_path = conf_path
-        self.model_path = model_path
+        self.conf_paths = conf_paths
+        self.model_paths = model_paths
         self.invocation_options = invocation_options
         self.loop = asyncio.get_event_loop()
-        self.model = None
+        self.models: List[Model] = None
         self.failures = None
 
         self.console_printer.print_magenta(
             ef.bold + 'Welcome to CSAOpt v{}\n\n'.format(__version__))
+
+    def _get_execution_type(self, models: List[str], configs: List[str]) -> ExecutionType:
+        len_models = len(models)
+        len_configs = len(configs)
+
+        if len_models < 1:
+            raise AssertionError('No models provided')
+        if len_configs < 1:
+            raise AssertionError('No configs provided')
+
+        if len_models > 1 and len_configs != len_models:
+            raise AssertionError('For len(models) == {}, there should be {} configs, but found {}',
+                                 len_models, len_models, len_configs)
+
+        if len_models == 1 and len_configs == 1:
+            return ExecutionType.SingleModelSingleConf
+        elif len_models == 1 and len_configs > 1:
+            return ExecutionType.SingleModelMultiConf
+        elif len_models > 1 and len_configs == 1:
+            return ExecutionType.MultiModelSingleConf
+        elif len_models > 1 and len_configs > 1:
+            return ExecutionType.MultiModelMultiConf
+        else:
+            raise AssertionError('Could not determine Execution Type for len(models) == {} and len(configs) == {}',
+                                 len_models, len_configs)
 
     def _get_instance_manager(self, context, conf, internal_conf) -> InstanceManager:
         cloud_platform = conf['cloud.platform']
@@ -148,45 +182,62 @@ class Runner:
         else:
             raise AttributeError('Cloud platform ' + cloud_platform + ' unrecognized.')
 
+    def dupicate_cloud_configs(configs):
+        # TODO this needs to be clearly stated in documentation
+        for config in configs:
+            if config.get('cloud', None) is not None:
+                cloud_conf = config['cloud']
+                break
+        else:
+            raise AssertionError('No cloud configuration found')
+
+        for config in configs:
+            config['cloud'] = cloud_conf
+
     async def _run_async(self, loop):
         self.console_printer.print_with_spinner('Loading Config')
         try:
-            conf = get_configs(self.conf_path)
-            internal_conf = self.invocation_options['internal_conf']
-            ctx = Context(self.console_printer, conf, internal_conf)
+            exec_type = self._get_execution_type(self.model_paths, self.conf_paths)
 
+            configs = [get_configs(conf_path) for conf_path in self.conf_paths]
+            self.dupicate_cloud_configs(configs)
+
+            internal_conf = self.invocation_options['internal_conf']
+
+            ctx = Context(self.console_printer, configs, internal_conf)
         except:
             self.console_printer.spinner_failure()
             raise
 
-        conf['model']['path'] = self.model_path
-        self.console_printer.spinner_success()
-        logger.debug('Running model {}'.format(self.model))
-        self.console_printer.print_with_spinner('Loading Model')
-        loader = ModelLoader(conf, internal_conf)
-        self.model = loader.get_model()
-        logger.debug('Model loaded succesfully.')
-        self.console_printer.spinner_success()
+        self.console_printer.print_with_spinner('Loading Models')
+        for idx, model_path in enumerate(self.model_paths):
+            configs[idx]['model']['path'] = self.model_path
+            self.console_printer.spinner_success()
+            logger.debug('Loading model {}'.format(self.model))
+            loader = ModelLoader(configs[idx], internal_conf)
+            self.models[idx] = loader.get_model()
+            logger.debug('Models loaded succesfully.')
+            self.console_printer.spinner_success()
 
         # Get cloud config, create instance manager
-        self.cloud_config: Dict[str, str] = {}
+        self.cloud_config = configs[0]
 
         self.console_printer.print_with_spinner(
-            'Starting instances on {}'.format(conf['cloud.platform'].upper()))
-        with self._get_instance_manager(ctx, conf, internal_conf) as instancemanager:
+            'Starting instances on {}'.format(self.cloud_config['cloud.platform'].upper()))
+        with self._get_instance_manager(ctx, self.cloud_config, internal_conf) as instancemanager:
             self.console_printer.spinner_success()
             self.console.printer.print_with_spinner('Waiting for queue to come online')
 
             queue, _ = instancemanager.get_instances()
             async with timeout(30) as async_timeout:
-                queue_client = QueueClient.create(loop, conf)
+                queue_client = QueueClient.create(loop, configs[0])
                 self.console_printer.spinner_success()
 
             if async_timeout.expired:
                 self.console_printer.spinner_failure()
                 raise TimeoutError('Timed out waiting for queue to come online')
 
-            jobmanager = JobManager(ctx, queue_client, self.model)
+            jobmanager = JobManager(ctx, exec_type, queue_client, self.model)
             jobmanager.deploy_model()
 
             self.console_printer.print_with_spinner('Running Simulated Annealing')
@@ -204,7 +255,7 @@ class Runner:
 
             self.console_printer.println('Evaluated: {} State: {}'.format(val_min, best_res))
 
-            if conf['TODO']:
+            if configs[0]['TODO']:
                 self.console_printer.print_with_spinner('Saving best result to file: TODO')
                 try:
                     job.write_files()
@@ -247,7 +298,7 @@ class Runner:
 
 class Context:
 
-    def __init__(self, console_printer: ConsolePrinter, config, internal_config) -> None:
+    def __init__(self, console_printer: ConsolePrinter, configs, internal_config) -> None:
         self.console_printer: ConsolePrinter = console_printer
-        self.config = config
+        self.configs = configs
         self.internal_config = internal_config

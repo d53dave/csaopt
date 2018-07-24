@@ -35,12 +35,12 @@ def isBase64(x):
 
 @pytest.fixture
 def context(conf, internal_conf):
-    return AppContext(ConsolePrinter(internal_conf), conf, internal_conf)
+    return AppContext(ConsolePrinter(internal_conf), [conf], internal_conf)
 
 
 @pytest.fixture
 def awstools(context):
-    return AWSTools(context, context.config, context.internal_config)
+    return AWSTools(context, context.configs[0], context.internal_config)
 
 
 def test_loads_userdata(awstools):
@@ -113,7 +113,7 @@ def test_context_manager(context):
     with mock_ec2():
         responses.add(responses.GET, 'https://api.ipify.org/',
                       body='192.168.0.1', status=200)
-        with AWSTools(context, context.config, context.internal_config) as awstools:
+        with AWSTools(context, context.configs[0], context.internal_config) as awstools:
             worker_instance_ids = [w.id for w in awstools.workers]
             queue_id = awstools.message_queue.id
             assert len(awstools.ec2_client.describe_instances()) == 2
