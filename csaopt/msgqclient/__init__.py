@@ -11,7 +11,7 @@ class Worker():
 
     def __init__(self, id: str) -> None:
         self.id: str = id
-        self.jobs: List[ActiveJob] = []
+        self.jobs: List[Job] = []
         self.model_deployed = False
         self.heartbeat = None
         self.stats: MutableSequence[Dict] = deque(maxlen=15)
@@ -39,9 +39,3 @@ class Worker():
             return last
         except ValueError:
             return None
-
-
-class ActiveJob(NamedTuple):
-    job: Job
-    workers: List[Worker]
-    finished: bool

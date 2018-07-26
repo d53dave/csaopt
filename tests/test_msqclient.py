@@ -161,6 +161,7 @@ async def test_worker_sends_results(client: QueueClient, fake_producer: FakeProd
     worker_msg = {'worker_id': '12345'}
     await fake_producer.send(data_topic_recv, 'join', worker_msg)
 
+# TODO Test broadcast and non-broadcast model and job deploys
 
 @pytest.mark.timeout(2)
 @pytest.mark.asyncio
@@ -173,7 +174,7 @@ async def test_model_deploy(client: QueueClient, fake_producer: FakeProducer, fa
 
     model = Model('testmodel', 3, Precision.Float32, RandomDistribution.Uniform,
                   {'evaluate': 'def a(): return 1.0'})
-    await client.deploy_model(model)
+    await client.broadcast_deploy_model(model)
 
     assert not client.model_deployed()
 
@@ -193,5 +194,5 @@ async def test_model_deploy(client: QueueClient, fake_producer: FakeProducer, fa
 async def test_model_deploy_no_workers(client: QueueClient):
     model = Model('testmodel', 3, Precision.Float32, RandomDistribution.Uniform,
                   {'evaluate': 'def a(): return 1.0'})
-    await client.deploy_model(model)
+    await client.deploy_model('worker123', model)
     assert not client.model_deployed()

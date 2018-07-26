@@ -1,8 +1,13 @@
 import asyncio
 
-from . import Job
+from typing import List
+from pyhocon import ConfigTree
+
+from . import Job, ExecutionType
 from ..model import Model
 from ..msgqclient.client import QueueClient
+
+# TODO: this (or somebody else) needs to check for n Models == n Workers in several cases
 
 
 class JobManager():
@@ -12,23 +17,62 @@ class JobManager():
     the msgqueue client class.
 
     """
-    def __init__(self, ctx, queue_client: QueueClient, model: Model) -> None:
+    def __init__(self,
+                 ctx,
+                 queue_client: QueueClient,
+                 models: List[Model],
+                 configs: List[ConfigTree]) -> None:
         self.queue: QueueClient = queue_client
-        self.model_deployed = False
-        self.opt_conf = ctx.config['optimization']
-        self.job = Job(model, self.opt_conf)
+        self.models_deployed = False
+        self.models = models
+        self.configs = configs
+        self.execution_type: ExecutionType = ctx.exec_type
+        self.jobs: List[Job] = []
 
     async def deploy_model(self):
-        await self.queue.deploy_model(self.job.model)
+        if self.execution_type is ExecutionType.SingleModelSingleConf:
+            self.queue.broadcast_deploy_model(self.models[0])
+        elif self.execution_type is ExecutionType.SingleModelMultiConf:
+            self.queue.broadcast_deploy_model(self.models[0])
+        else:
+            for n, worker_id in enumerate(self.queue.workers.keys()):
+                self.queue.deploy_model(worker_id, self.models[n])
 
-    async def submit(self) -> Job:
-        if not self.model_deployed:
+        while not self.queue.models_deployed():
+            asyncio.sleep(2)
+
+        self.models_deployed = True
+
+    async def submit(self) -> List[Job]:
+        if not self.models_deployed:
             raise AssertionError('Trying to submit job without deploying model')
-        await self.queue.submit_job(self.job)
-        self.job.was_submitted = True
-        return self.job
 
-    async def wait_for_results(self) -> Job:
-        while not self.job.completed:
+        if self.execution_type is ExecutionType.SingleModelSingleConf:
+            job = Job(self.models[0], self.configs[0])
+            await self.queue.broadcast_job(job)
+            job.was_submitted = True
+            self.jobs.append(job)
+        elif self.execution_type is ExecutionType.SingleModelMultiConf:
+            for n, worker_id in enumerate(self.queue.workers.keys()):
+                job = Job(self.models[0], self.configs[n])
+                await self.queue.send_job(worker_id, job)
+                job.was_submitted = True
+                self.jobs.append(job)
+        elif self.execution_type is ExecutionType.MultiModelSingleConf:
+            for n, worker_id in enumerate(self.queue.workers.keys()):
+                job = Job(self.models[n], self.configs[0])
+                self.queue.send_job(worker_id, job)
+                job.was_submitted = True
+                self.jobs.append(job)
+        elif self.execution_type is ExecutionType.MultiModelMultiConf:
+            for n, worker_id in enumerate(self.queue.workers.keys()):
+                job = Job(self.models[n], self.configs[n])
+                self.queue.send_job(worker_id, job)
+                job.was_submitted = True
+                self.jobs.append(job)
+
+        return self.jobs
+
+    async def wait_for_results(self) -> None:
+        while any(not job.completed for job in self.jobs):
             asyncio.sleep(2.5)
-        return self.job

@@ -10,8 +10,8 @@ import sys
 import subprocess
 import unicodedata
 import re
-from enum import Enum
 
+from pyhocon import ConfigTree
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.job import Job as ApJob
 from asyncio.selector_events import BaseSelectorEventLoop
@@ -26,7 +26,7 @@ from .model import Model
 from .utils import get_configs
 from .instancemanager.instancemanager import InstanceManager
 from .instancemanager.awstools import AWSTools
-from .jobs.jobmanager import Job, JobManager
+from .jobs.jobmanager import Job, JobManager, ExecutionType
 
 logger = logging.getLogger('csaopt.Runner')
 fg.set('csaopt_magenta', 'rgb', (199, 51, 147))
@@ -125,13 +125,6 @@ class ConsolePrinter:
                     fg.red + ConsolePrinter.status_failed))
 
 
-class ExecutionType(Enum):
-    MultiModelMultiConf = 'MultiModelMultiConf'
-    SingleModelMultiConf = 'SingleModelMultiConf'
-    SingleModelSingleConf = 'SingleModelSingleConf'
-    MultiModelSingleConf = 'MultiModelSingleConf'
-
-
 class Runner:
 
     def __init__(self, model_paths: List[str], conf_paths: List[str], invocation_options: Dict[str, Any]) -> None:
@@ -157,9 +150,9 @@ class Runner:
         if len_configs < 1:
             raise AssertionError('No configs provided')
 
-        if len_models > 1 and len_configs != len_models:
-            raise AssertionError('For len(models) == {}, there should be {} configs, but found {}',
-                                 len_models, len_models, len_configs)
+        if len_models > 1 and len_configs > 1 and len_configs != len_models:
+            raise AssertionError('For len(models) == {}, there should be {} configs, but found {}'.format(
+                                 len_models, len_models, len_configs))
 
         if len_models == 1 and len_configs == 1:
             return ExecutionType.SingleModelSingleConf
@@ -170,8 +163,8 @@ class Runner:
         elif len_models > 1 and len_configs > 1:
             return ExecutionType.MultiModelMultiConf
         else:
-            raise AssertionError('Could not determine Execution Type for len(models) == {} and len(configs) == {}',
-                                 len_models, len_configs)
+            raise AssertionError('Could not determine Exec Type for len(models) == {} and len(configs) == {}'.format(
+                                 len_models, len_configs))
 
     def _get_instance_manager(self, context, conf, internal_conf) -> InstanceManager:
         cloud_platform = conf['cloud.platform']
@@ -297,8 +290,12 @@ class Runner:
 
 
 class Context:
-
-    def __init__(self, console_printer: ConsolePrinter, configs, internal_config) -> None:
+    def __init__(self,
+                 console_printer: ConsolePrinter,
+                 configs: ConfigTree,
+                 internal_config: ConfigTree,
+                 exec_type: ExecutionType=None) -> None:
         self.console_printer: ConsolePrinter = console_printer
         self.configs = configs
         self.internal_config = internal_config
+        self.exec_type = exec_type

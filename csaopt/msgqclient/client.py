@@ -2,13 +2,15 @@ import logging
 import msgpack
 import asyncio
 
-from typing import Dict, Optional, Any
+from collections import OrderedDict
+from copy import deepcopy
+from typing import Dict, Optional, Any, List
 from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
 from asyncio.selector_events import BaseSelectorEventLoop as EventLoop
 
 from ..jobs import Job
 from ..model import Model
-from . import Worker, ActiveJob
+from . import Worker
 
 log = logging.getLogger(__name__)
 
@@ -67,8 +69,8 @@ class QueueClient:
         self.data_send_topic: str = data_send_topic
         self.consumer = consumer
         self.producer = producer
-        self.workers: Dict[str, Worker] = {}
-        self.submitted_jobs: Dict[str, ActiveJob] = {}
+        self.workers: Dict[str, Worker] = OrderedDict()
+        self.submitted_jobs: List[Job] = []
 
     async def _wait_for_queue(self, timeout_ms=4000):
         for i in range(0, timeout_ms, 250):
@@ -83,7 +85,6 @@ class QueueClient:
 
     async def _consume(self):
         try:
-            # Consume messages
             async for msg in self.consumer:
                 log.debug('consumed: [{}, {}, {}, {}, {}, {}]'.format(
                           msg.topic, msg.partition, msg.offset,
@@ -118,14 +119,20 @@ class QueueClient:
     def _handle_job_results(self, worker_id: str, results: Dict[str, Any]) -> None:
         job_id = results.get('job_id', None)
         if job_id is not None and job_id in self.submitted_jobs:
-            job = self.submitted_jobs[job_id].job
+            job = self.submitted_jobs[job_id]
             job.results.append(results['data'])
+        else:
+            log.error(
+               'Received results for job {} but job_id is not known.'.format(job_id))
 
     def _handle_job_values(self, worker_id: str, values: Dict[str, Any]) -> None:
         job_id = values.get('job_id', None)
         if job_id is not None and job_id in self.submitted_jobs:
-            job = self.submitted_jobs[job_id].job
+            job = self.submitted_jobs[job_id]
             job.values.append(values['data'])
+        else:
+            log.error(
+                'Received values for job {} but job_id is not known.'.format(job_id))
 
     def _handle_worker_heartbeat(self, worker_id: str, hb_timestamp_utc: int):
         if worker_id in self.workers:
@@ -136,7 +143,6 @@ class QueueClient:
 
     def _handle_worker_join(self, worker_id: str, hb_timestamp_utc: int):
         if worker_id not in self.workers:
-            print('Worker joined:', worker_id)
             log.info('Worker [{}] joined.'.format(worker_id))
             worker = Worker(worker_id)
             worker.update_heartbeat(hb_timestamp_utc)
@@ -179,17 +185,34 @@ class QueueClient:
             # Wait for all pending messages to be delivered or expire.
             pass
 
-    async def deploy_model(self, model: Model):
+    async def _send_to_worker(self, worker_id: str, topic: str, key: str=None, value: Any=None):
+        new_value = deepcopy(value)
+        if value is not None:
+            try:
+                new_value['worker_id'] = worker_id
+            except Exception as e:
+                log.error('Send to Worker: tried to set \'worker_id\' but caught exception: {}'.format(e))
+        await self._send_one(topic, key, new_value)
+
+    async def deploy_model(self, worker_id: str, model: Model) -> None:
+        await self._send_to_worker(worker_id, self.management_send_topic, 'model', model.to_dict())
+
+    async def send_job(self, worker_id: str, job: Job) -> None:
+        await self._send_to_worker(worker_id, self.management_send_topic, 'job', job.to_dict())
+        self.workers[worker_id].jobs.append(job)
+        self.submitted_jobs.append(job)
+
+    async def broadcast_job(self, job: Job) -> None:
+        await self._send_one(self.management_send_topic, 'job', job.to_dict())
+        for _, worker in self.workers.items():
+            worker.jobs.append(job)
+        self.submitted_jobs.append(job)
+
+    async def broadcast_deploy_model(self, model):
         await self._send_one(self.management_send_topic, 'model', model.to_dict())
 
     def model_deployed(self):
         return len(self.workers) > 0 and all(worker.model_deployed for worker in self.workers.values())
-
-    def get_results(self, job_id: str) -> Optional[ActiveJob]:
-        results = self.submitted_jobs.get(job_id, None)
-        if results is not None and results.job.completed is True:
-            return results
-        return None
 
     class _KeySerializer:
         def __call__(self, key: str) -> bytes:

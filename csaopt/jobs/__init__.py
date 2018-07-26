@@ -1,12 +1,20 @@
 import uuid
 import os
 
+from enum import Enum
 from tinynumpy import tinynumpy as np
 from typing import Dict, List, Any, Tuple
 
 from ..model import Model
 
 __all__ = ['jobmanager']
+
+
+class ExecutionType(Enum):
+    MultiModelMultiConf = 'MultiModelMultiConf'
+    SingleModelMultiConf = 'SingleModelMultiConf'
+    SingleModelSingleConf = 'SingleModelSingleConf'
+    MultiModelSingleConf = 'MultiModelSingleConf'
 
 
 class Job():
@@ -17,6 +25,14 @@ class Job():
         self.values: List[List[float]] = []
         self.completed = False
         self.was_submitted = False
+        self.params = opt_params
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'params': self.params,
+            'model': self.model.name
+        }
 
     def get_best_results(self) -> Tuple[float, np.ndarray]:
         values_ndarr = np.ndarray(self.values)
