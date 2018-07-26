@@ -1,6 +1,7 @@
 import inspect
 import subprocess
 
+from pyhocon import ConfigTree
 from typing import Optional, List, Dict, Callable
 from ..model import RequiredFunctions
 from . import ValidationError
@@ -26,8 +27,10 @@ class ModelValidator:
         'acceptance_func': 3
     }
 
-    def validate_functions(self, functions: Dict[str, Callable]) -> List[ValidationError]:
+    def validate_functions(self, functions: Dict[str, Callable], internal_config: ConfigTree) -> List[ValidationError]:
         errors: List[ValidationError] = []
+
+        self.reserved_keywords: List[str] = internal_config['model.validation.reserved_keywords']
 
         for func in RequiredFunctions:
             val_errors = self._validate_function(
@@ -53,8 +56,16 @@ class ModelValidator:
             self._validate_empty_fun(name, fun),
             # TODO review if this is required
             self._validate_return_statement(name, fun),
-            self._validate_fun_signature_len(name, fun, param_count)
+            self._validate_fun_signature_len(name, fun, param_count),
+            self._check_for_reserved_keywords(name, fun)
         ]
+
+    def _check_for_reserved_keywords(self, name, fun) -> Optional[ValidationError]:
+        """Returns ValidationError if function contains reserved keywords"""
+        for reserved_keyword in self.reserved_keywords:
+            if reserved_keyword in inspect.getsource(fun):
+                return ValidationError('Reserved Keyword {} found in function \'{}\''.format(reserved_keyword, name))
+        return None
 
     def _validate_missing_fun(self, name, fun) -> Optional[ValidationError]:
         """Returns a ValidationError if function is missing"""
