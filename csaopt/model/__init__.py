@@ -61,5 +61,5 @@ class Model:
             'functions': self.functions
         }
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         return ujson.dumps(self, indent=4)

@@ -27,6 +27,10 @@ class Job():
         self.was_submitted = False
         self.params = opt_params
 
+    def __repr__(self):
+        return 'Job[{}]: Model={}, Submitted={}, Completed={}, Params={}'.format(
+            self.id, self.model.name, self.was_submitted, self.completed, self.params)
+
     def to_dict(self):
         return {
             'id': self.id,
