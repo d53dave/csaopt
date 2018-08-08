@@ -122,8 +122,7 @@ class QueueClient:
             job = self.submitted_jobs[job_id]
             job.results.append(results['data'])
         else:
-            log.error(
-               'Received results for job {} but job_id is not known.'.format(job_id))
+            log.error('Received results for job {} but job_id is not known.'.format(job_id))
 
     def _handle_job_values(self, worker_id: str, values: Dict[str, Any]) -> None:
         job_id = values.get('job_id', None)
@@ -162,8 +161,7 @@ class QueueClient:
         if worker_id in self.workers:
             self.workers[worker_id].model_deployed = True
         else:
-            log.warn(
-                'Worker [{}] tried to signal model deployed but has not joined.'.format(worker_id)) 
+            log.warn('Worker [{}] tried to signal model deployed but has not joined.'.format(worker_id))
 
     async def _update_worker_timeout(self, worker_timeout_seconds):
         while True:

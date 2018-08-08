@@ -163,6 +163,7 @@ async def test_worker_sends_results(client: QueueClient, fake_producer: FakeProd
 
 # TODO Test broadcast and non-broadcast model and job deploys
 
+
 @pytest.mark.timeout(2)
 @pytest.mark.asyncio
 async def test_model_deploy(client: QueueClient, fake_producer: FakeProducer, fake_consumer: FakeConsumer):
@@ -195,4 +196,8 @@ async def test_model_deploy_no_workers(client: QueueClient):
     model = Model('testmodel', 3, Precision.Float32, RandomDistribution.Uniform,
                   {'evaluate': 'def a(): return 1.0'})
     await client.deploy_model('worker123', model)
+    assert not client.model_deployed()
+
+
+def test_models_deployed(client: QueueClient):
     assert not client.model_deployed()
