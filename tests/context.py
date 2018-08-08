@@ -14,6 +14,7 @@ from csaopt import ConsolePrinter, Context as AppContext
 from csaopt.model import Model, RandomDistribution, Precision
 from csaopt.model_loader.model_loader import ModelLoader, ModelValidator, ValidationError
 from csaopt import Runner, ExecutionType
+from csaopt.jobs.jobmanager import JobManager, Job
 
 def copy_folder_contents(src, dest):
 

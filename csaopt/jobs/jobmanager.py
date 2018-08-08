@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from typing import List
 from pyhocon import ConfigTree
@@ -8,6 +9,8 @@ from ..model import Model
 from ..msgqclient.client import QueueClient
 
 # TODO: this (or somebody else) needs to check for n Models == n Workers in several cases
+
+log = logging.getLogger(__name__)
 
 
 class JobManager():
@@ -36,10 +39,14 @@ class JobManager():
             self.queue.broadcast_deploy_model(self.models[0])
         else:
             for n, worker_id in enumerate(self.queue.workers.keys()):
+                log.debug('Processing Worker {} with id {}'.format(n, worker_id))
                 self.queue.deploy_model(worker_id, self.models[n])
 
-        while not self.queue.models_deployed():
+        while not self.queue.model_deployed():
+            log.debug('Awaiting queue.models_deployed()')
             asyncio.sleep(2)
+
+        log.debug('queue.models_deployed() finished')
 
         self.models_deployed = True
 
@@ -61,18 +68,21 @@ class JobManager():
         elif self.execution_type is ExecutionType.MultiModelSingleConf:
             for n, worker_id in enumerate(self.queue.workers.keys()):
                 job = Job(self.models[n], self.configs[0])
-                self.queue.send_job(worker_id, job)
+                await self.queue.send_job(worker_id, job)
                 job.was_submitted = True
                 self.jobs.append(job)
         elif self.execution_type is ExecutionType.MultiModelMultiConf:
             for n, worker_id in enumerate(self.queue.workers.keys()):
                 job = Job(self.models[n], self.configs[n])
-                self.queue.send_job(worker_id, job)
+                await self.queue.send_job(worker_id, job)
                 job.was_submitted = True
                 self.jobs.append(job)
 
         return self.jobs
 
     async def wait_for_results(self) -> None:
+        if len(self.jobs) == 0:
+            raise AssertionError('wait_for_results called but no jobs submitted')
         while any(not job.completed for job in self.jobs):
+            log.debug('Waiting for results...')
             asyncio.sleep(2.5)
