@@ -6,15 +6,22 @@ matrix:
       dist: trusty
     - os: osx
 
+env:
+  global:
+    - CC_TEST_REPORTER_ID=57a2d5465c28a2de7f343c5c859259b2d5b473a6fee413edd1f4503dc911fe38
 
 before_script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh;
+      wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh && \
+      curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-darwin-amd64 > ./cc-test-reporter;
     else
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh && \
+      curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter;
     fi
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
+  - chmod +x ./cc-test-reporter
+  - ./cc-test-reporter before-build
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
@@ -26,7 +33,11 @@ before_script:
 
 script: py.test --cov=csaopt -v tests
 
+after_script:
+  - coverage xml
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false" && $TRAVIS_OS_NAME == "linux" ]]; then ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT; fi
+
 after_success:
-    - if [[ $TRAVIS_OS_NAME == "linux" ]]; then
-          coveralls;
-      fi
+  - if [[ $TRAVIS_OS_NAME == "linux" ]]; then
+        coveralls;
+    fi
