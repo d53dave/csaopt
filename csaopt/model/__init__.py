@@ -23,6 +23,7 @@ class RequiredFunctions(Enum):
     Cool = 'cool'
     Evaluate = 'evaluate'
     Acceptance = 'acceptance_func'
+    StateShape = 'state_shape'
 
 
 class Model:
@@ -31,6 +32,7 @@ class Model:
     def from_dict(d: Dict[str, Any]):
         assert 'distribution' in d
         assert 'precision' in d
+        assert 'globals' in d
 
         distribution: RandomDistribution = d['distribution']
         precision: Precision = d['precision']
@@ -39,17 +41,20 @@ class Model:
                      d['dimensions'],
                      precision,
                      distribution,
+                     d['globals'],
                      d['functions'])
 
     def __init__(self, name: str,
                  dimensions: int,
                  precision: Precision,
                  distribution: RandomDistribution,
+                 opt_globals: str,
                  functions: Dict[str, str]) -> None:
         self.name: str = name
         self.dimensions: int = dimensions
         self.distribution: RandomDistribution = distribution
         self.precision: Precision = precision
+        self.globals: str = opt_globals
         self.functions: Dict[str, str] = functions
 
     def to_dict(self) -> Dict[str, Any]:
@@ -58,6 +63,7 @@ class Model:
             'dimensions': self.dimensions,
             'distribution': self.distribution.value,
             'precision': self.precision.value,
+            'globals': self.globals,
             'functions': self.functions
         }
 

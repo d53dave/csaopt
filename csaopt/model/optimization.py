@@ -1,7 +1,9 @@
 from model import RandomDistribution, Precision
-from typing import Sequence
+from typing import Sequence, Tuple
+
 
 # Configuration
+
 
 def distribution() -> RandomDistribution:
     pass
@@ -13,6 +15,11 @@ def precision() -> Precision:
 
 def dimensions() -> int:
     pass
+
+
+def state_shape() -> Tuple:
+    pass
+
 
 # Functions
 
