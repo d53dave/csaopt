@@ -11,6 +11,7 @@ from ..model import Model, RequiredFunctions
 from ..utils import random_str
 
 logger = logging.getLogger(__name__)
+__globals_token = '# -- Globals'
 
 
 class ModelLoader():
@@ -23,6 +24,7 @@ class ModelLoader():
         self.model: Model = None
 
         functions: Dict[str, Callable] = self._extract_functions(self.model_module)
+        opt_globals = self._extract_globals(self.model_path)
         self.errors: List[ValidationError] = []
 
         if not conf.get('model.skip_typecheck'):
@@ -34,17 +36,27 @@ class ModelLoader():
         self.errors.extend(validator.validate_functions(functions))
 
         if len(self.errors) == 0:
-            self.model = self._create_model(model_name, self.model_module, functions)
+            self.model = self._create_model(model_name, self.model_module, opt_globals, functions)
         else:
             logger.error('Validation failed for model `{}`: {}'.format(self.model_path, self.errors))
 
-    def _create_model(self, name: str, module: Any, functions: Dict[str, Callable]) -> Model:
+    def _extract_globals(self, model_path: str) -> str:
+        with open(model_path, 'r') as model_file:
+            model_source_lines = model_file.read().splitlines()
+            token_idxs = [idx for idx, line in enumerate(model_source_lines) if __globals_token in line]
+            if len(token_idxs) == 2 and token_idxs[0] != token_idxs[1]:
+                begin, end = token_idxs
+                return '\n'.join(model_source_lines[begin + 1:end])
+        return ''
+
+    def _create_model(self, name: str, module: Any, opt_globals: str, functions: Dict[str, Callable]) -> Model:
         return Model(name,
                      module.dimensions(),
                      module.precision(),
                      module.distribution(),
+                     opt_globals,
                      # The model is prepared for sending it to the workers
-                     # and contains raw source instead of the real functions
+                     # and contains raw source instead of the real python functions
                      {f_name: inspect.getsource(functions[f_name])
                       for f_name in functions.keys()})
 
