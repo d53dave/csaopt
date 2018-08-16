@@ -75,9 +75,9 @@ class Broker():
 
     def broadcast(self, command: WorkerCommand, payload: Dict[str, Any]):
         for queue_id in self.queue_ids:
-            self.send_to_queue(command, queue_id, payload)
+            self.send_to_queue(queue_id, command, payload)
 
-    def send_to_queue(self, command: WorkerCommand, queue: Union[str, int], payload: Dict[str, Any]):
+    def send_to_queue(self, queue: Union[str, int], command: WorkerCommand, payload: Dict[str, Any]):
         queue_id = self.__extract_queue_id(queue)
 
         msg = self.dramatiq_broker.enqueue(Message(
