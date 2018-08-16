@@ -110,7 +110,7 @@ class AWSTools(InstanceManager):
     def __map_ec2_instance(self, instance: Any) -> Instance:
         return Instance(instance.id, instance.public_ip_address, instance.image_id == self.message_queue_ami)
 
-    def _get_running_instances(self) -> Tuple[Instance, List[Instance]]:
+    def get_running_instances(self) -> Tuple[Instance, List[Instance]]:
         return self.__map_ec2_instance(self.message_queue), [self.__map_ec2_instance(w) for w in self.workers]
 
     def _terminate_instances(self, timeout_ms) -> None:
@@ -192,8 +192,7 @@ class AWSTools(InstanceManager):
 
             logger.debug('Authorized Security Group Ingress for CidrIp {} with result: {}'.format(
                 self.own_external_ip,
-                data
-                ))
+                data))
 
             return security_group_id
         except ClientError as e:

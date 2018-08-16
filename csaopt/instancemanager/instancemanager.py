@@ -14,7 +14,7 @@ class InstanceManager(abc.ABC):
         """Start and configure instances, return queue and list of workers"""
 
     @abc.abstractmethod
-    def _get_running_instances(self) -> Tuple[Instance, List[Instance]]:
+    def get_running_instances(self) -> Tuple[Instance, List[Instance]]:
         """Returns the currently managed instances"""
 
     @abc.abstractmethod
@@ -28,7 +28,6 @@ class InstanceManager(abc.ABC):
     @abc.abstractmethod
     def __enter__(self) -> None:
         """InstanceManager is a ContextManager"""
-        # TODO: this must update configs
 
     @abc.abstractmethod
     def __exit__(self, exc_type, exc_value, traceback) -> None:
