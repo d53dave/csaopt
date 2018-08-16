@@ -20,15 +20,14 @@ dependencies:
   - pytest-mock
   - pytest-asyncio
   - pip:
+    - sortedcontainers
+    - dramatiq[redis, watch]
     - moto
     - async-timeout
     - apscheduler
     - coloredlogs
     - sty
     - tinynumpy
-    - aiokafka
-    - lz4tools
-    - xxhash
     - pyhocon
     - mypy
     - sphinxcontrib-napoleon

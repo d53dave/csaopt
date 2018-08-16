@@ -1,11 +1,16 @@
 import socket
 import string
 import requests
+import os
 
 from typing import Optional
 from random import choice
 from pyhocon import ConfigFactory
 from pyhocon.config_tree import ConfigTree
+
+
+def is_pytest_run():
+    return os.environ.get('UNIT_TESTS') == '1'
 
 
 def get_own_ip() -> str:
@@ -23,7 +28,7 @@ def random_str(length: int) -> str:
     return ''.join(choice(chars) for x in range(length))
 
 
-def internet_connectivity_available(host:str = "8.8.8.8", port:int = 53, timeout_seconds: float = 3.0) -> bool:
+def internet_connectivity_available(host: str = "8.8.8.8", port: int = 53, timeout_seconds: float = 3.0) -> bool:
     """
     Checks if internet connectivity is available. 
     

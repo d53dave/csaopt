@@ -20,7 +20,7 @@ from sty import fg, ef, rs
 from datetime import datetime
 from async_timeout import timeout
 
-from .msgqclient.client import QueueClient
+from .broker import Broker
 from .model_loader.model_loader import ModelLoader
 from .model import Model
 from .utils import get_configs
@@ -87,9 +87,6 @@ class ConsolePrinter:
         self.print(fg.csaopt_magenta + txt)
 
     def print_with_spinner(self, txt: str) -> None:
-        # Check if log level > info, skip spinner if so
-        # Truncate to console width to fit spinner
-
         self.scheduler.remove_all_jobs()
         self.last_line = txt
 
@@ -110,9 +107,10 @@ class ConsolePrinter:
         if self.log_level == 'info':
             self.scheduler.remove_all_jobs()
             self.println(ConsolePrinter._format_to_width(
-                    self.columns,
-                    self.last_line[0:len(self.last_line) - len(ConsolePrinter.status_done)],
-                    fg.green + ConsolePrinter.status_done))
+                self.columns,
+                self.last_line[0:len(
+                    self.last_line) - len(ConsolePrinter.status_done)],
+                fg.green + ConsolePrinter.status_done))
 
     def spinner_failure(self) -> None:
         # If log level < warn, just re-print with 'Failed.'
@@ -120,9 +118,10 @@ class ConsolePrinter:
         if self.log_level == 'info':
             self.scheduler.remove_all_jobs()
             self.println(ConsolePrinter._format_to_width(
-                    self.columns,
-                    self.last_line[0:len(self.last_line) - len(ConsolePrinter.status_failed)],
-                    fg.red + ConsolePrinter.status_failed))
+                self.columns,
+                self.last_line[0:len(self.last_line) -
+                               len(ConsolePrinter.status_failed)],
+                fg.red + ConsolePrinter.status_failed))
 
 
 class Runner:
@@ -198,9 +197,10 @@ class Runner:
             internal_conf = self.invocation_options['internal_conf']
 
             ctx = Context(self.console_printer, configs, internal_conf)
-        except:
+        except Exception as e:
             self.console_printer.spinner_failure()
-            raise
+            self.failures.append('Error while loading config: ' + str(e))
+            raise e
 
         self.console_printer.print_with_spinner('Loading Models')
         for idx, model_path in enumerate(self.model_paths):
@@ -219,23 +219,23 @@ class Runner:
             'Starting instances on {}'.format(self.cloud_config['cloud.platform'].upper()))
         with self._get_instance_manager(ctx, self.cloud_config, internal_conf) as instancemanager:
             self.console_printer.spinner_success()
-            self.console.printer.print_with_spinner('Waiting for queue to come online')
+            self.console.printer.print_with_spinner('Waiting for broker to come online')
 
             queue, _ = instancemanager.get_instances()
             async with timeout(30) as async_timeout:
-                queue_client = QueueClient.create(loop, configs[0])
+                broker: Broker = Broker()
                 self.console_printer.spinner_success()
 
             if async_timeout.expired:
                 self.console_printer.spinner_failure()
-                raise TimeoutError('Timed out waiting for queue to come online')
+                raise TimeoutError('Timed out waiting for broker to come online')
 
             jobmanager = JobManager(ctx, exec_type, queue_client, self.model)
             jobmanager.deploy_model()
 
             self.console_printer.print_with_spinner('Running Simulated Annealing')
             # TODO: this needs timeouts
-            job: Job = await jobmanager.submit()
+            jobs: List[Job] = await jobmanager.submit()
             await jobmanager.wait_for_results()
 
             self.console_printer.print_with_spinner('Retrieving results')
@@ -243,19 +243,19 @@ class Runner:
 
             self.console_printer.print_with_spinner('Scanning for best result')
             # TODO: determine which worker reported this result
-            val_min, best_res = job.get_best_results()
+            jobs.count()
             self.console_printer.spinner_success()
 
-            self.console_printer.println('Evaluated: {} State: {}'.format(val_min, best_res))
+            # self.console_printer.println('Evaluated: {} State: {}'.format(val_min, best_res))
 
-            if configs[0]['TODO']:
-                self.console_printer.print_with_spinner('Saving best result to file: TODO')
-                try:
-                    job.write_files()
-                    self.console_printer.spinner_success()
-                except Exception as e:
-                    self.failures.append('Could not write to file: {}'.format(e))
-                    self.console_printer.spinner_failure()
+            # if configs[0]['TODO']:
+            #     self.console_printer.print_with_spinner('Saving best result to file: TODO')
+            #     try:
+            #         job.write_files()
+            #         self.console_printer.spinner_success()
+            #     except Exception as e:
+            #         self.failures.append('Could not write to file: {}'.format(e))
+            #         self.console_printer.spinner_failure()
 
     def run(self) -> None:
         """
@@ -271,19 +271,6 @@ class Runner:
                 fg.red + 'It seems there have been errors. 🌩')
         else:
             self.console_printer.println(fg.green + 'All done. ✨')
-
-    async def go(self, loop: BaseSelectorEventLoop, model: Model, click_ctx: Any):
-        client = await QueueClient.create(loop, click_ctx.obj['internal_conf'])
-        asyncio.Task(self.periodic(client))
-        await client._consume()
-
-    async def periodic(self, client: QueueClient):
-        while True:
-            print('periodic')
-            await asyncio.sleep(1)
-            # await client._send_one('csaopt.data.in.t', key='TheKey', value={
-            #     u'a': [(1, 2, 3), True]
-            # })
 
     def cancel(self) -> None:
         pass

@@ -7,8 +7,6 @@ from distutils import dir_util
 sys.path.insert(0, os.path.abspath('.'))
 
 from csaopt.instancemanager.awstools import AWSTools
-from csaopt.msgqclient import Worker
-from csaopt.msgqclient.client import QueueClient
 from csaopt.utils import get_own_ip
 from csaopt import ConsolePrinter, Context as AppContext
 from csaopt.model import Model, RandomDistribution, Precision
