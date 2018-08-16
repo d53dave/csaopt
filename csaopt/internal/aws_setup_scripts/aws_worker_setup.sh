@@ -43,4 +43,5 @@ docker run --runtime=nvidia --rm nvidia/cuda nvidia-smi
 # or
 nvidia-docker run --rm -ti ryanolson/device-query
 
+docker pull d53dave/csaopt-worker:latest
 
