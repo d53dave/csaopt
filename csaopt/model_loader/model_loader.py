@@ -11,7 +11,6 @@ from ..model import Model, RequiredFunctions
 from ..utils import random_str
 
 logger = logging.getLogger(__name__)
-__globals_token = '# -- Globals'
 
 
 class ModelLoader():
@@ -22,6 +21,7 @@ class ModelLoader():
         self.model_module: ModuleType = self._create_module(model_name,
                                                             self.model_path)
         self.model: Model = None
+        self.globals_token = internal_conf.get('model.validation.globals_token', '# -- Globals')
 
         functions: Dict[str, Callable] = self._extract_functions(self.model_module)
         opt_globals = self._extract_globals(self.model_path)
@@ -43,7 +43,7 @@ class ModelLoader():
     def _extract_globals(self, model_path: str) -> str:
         with open(model_path, 'r') as model_file:
             model_source_lines = model_file.read().splitlines()
-            token_idxs = [idx for idx, line in enumerate(model_source_lines) if __globals_token in line]
+            token_idxs = [idx for idx, line in enumerate(model_source_lines) if self.globals_token in line]
             if len(token_idxs) == 2 and token_idxs[0] != token_idxs[1]:
                 begin, end = token_idxs
                 return '\n'.join(model_source_lines[begin + 1:end])

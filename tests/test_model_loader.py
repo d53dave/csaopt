@@ -31,7 +31,7 @@ def test_build_model(conf, internal_conf, mocker):
     model = loader.get_model()
 
     assert model is not None
-    assert len(model.functions) == 8
+    assert len(model.functions) == 9
     validator.validate_functions.assert_called_once()
 
 
