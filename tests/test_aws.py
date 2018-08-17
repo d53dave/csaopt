@@ -4,7 +4,9 @@ import base64
 
 from moto import mock_ec2
 from pyhocon import ConfigFactory
-from context import AWSTools, AppContext, ConsolePrinter
+from context import AWSTools, AppContext, ConsolePrinter, Instance
+
+from ipaddress import IPv4Address
 
 
 @pytest.fixture
@@ -121,3 +123,15 @@ def test_context_manager(context):
         for instance in awstools.ec2_resource.instances.all():
             if instance.id in worker_instance_ids or instance.id == queue_id:
                 assert instance.state['Name'] == 'terminated'
+
+
+def test_instance_ip():
+    instance = Instance('id', '192.168.0.1')
+
+    assert instance.public_ip.is_private is True
+    assert instance.public_ip == IPv4Address('192.168.0.1')
+
+
+def test_instance_ip_bad():
+    with pytest.raises(ValueError):
+        Instance('id', '442.168.0.1')
