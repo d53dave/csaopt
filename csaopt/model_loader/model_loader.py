@@ -21,7 +21,8 @@ class ModelLoader():
         self.model_module: ModuleType = self._create_module(model_name,
                                                             self.model_path)
         self.model: Model = None
-        self.globals_token = internal_conf.get('model.validation.globals_token', '# -- Globals')
+        self.globals_token = internal_conf.get(
+            'model.validation.globals_token', '# -- Globals')
 
         functions: Dict[str, Callable] = self._extract_functions(self.model_module)
         opt_globals = self._extract_globals(self.model_path)

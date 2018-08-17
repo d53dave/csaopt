@@ -28,21 +28,11 @@ def dimensions() -> int:
     return 2
 
 
-def get_state_shape() -> Tuple:
+def state_shape() -> Tuple:
     return (3,)
 
 
-def context() -> Sequence:
-    pass
-
-
 # Functions
-
-
-def copy_state(src: Sequence, dst: MutableSequence):
-    # print('Copying ' + str(src) + ' to '  + str(dst))
-    for i in range(len(src)):
-        dst[i] = src[i]
 
 
 def cool(old_temp: float) -> float:

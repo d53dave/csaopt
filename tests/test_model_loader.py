@@ -68,3 +68,19 @@ def test_loading_py_model_failed(conf, internal_conf, mocker):
 
     imp.load_source.assert_called_once_with(
         'testopt', 'examples/langermann/langermann_opt.py')
+
+
+def test_globals(conf, internal_conf, mocker):
+    validator = ModelValidator()
+    validator.validate_functions = mocker.stub(name='validate_functions_stub')
+    validator.validate_typing = mocker.stub(name='validate_typing_stub')
+
+    loader = ModelLoader(conf, internal_conf, validator)
+    validator.validate_functions.assert_called_once()
+
+    model = loader.get_model()
+    assert 'm = 5' in model.globals
+    assert 'c = (1, 2, 5, 2, 3)' in model.globals
+    assert 'A = ((3, 5), (5, 2), (2, 1), (1, 4), (7, 9))' in model.globals
+
+    assert 'from math import pi' not in model.globals
