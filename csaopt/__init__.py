@@ -140,30 +140,7 @@ class Runner:
         self.console_printer.print_magenta(
             ef.bold + 'Welcome to CSAOpt v{}\n\n'.format(__version__))
 
-    def _get_execution_type(self, models: List[str], configs: List[str]) -> ExecutionType:
-        len_models = len(models)
-        len_configs = len(configs)
 
-        if len_models < 1:
-            raise AssertionError('No models provided')
-        if len_configs < 1:
-            raise AssertionError('No configs provided')
-
-        if len_models > 1 and len_configs > 1 and len_configs != len_models:
-            raise AssertionError('For len(models) == {}, there should be {} configs, but found {}'.format(
-                                 len_models, len_models, len_configs))
-
-        if len_models == 1 and len_configs == 1:
-            return ExecutionType.SingleModelSingleConf
-        elif len_models == 1 and len_configs > 1:
-            return ExecutionType.SingleModelMultiConf
-        elif len_models > 1 and len_configs == 1:
-            return ExecutionType.MultiModelSingleConf
-        elif len_models > 1 and len_configs > 1:
-            return ExecutionType.MultiModelMultiConf
-        else:
-            raise AssertionError('Could not determine Exec Type for len(models) == {} and len(configs) == {}'.format(
-                                 len_models, len_configs))
 
     def _get_instance_manager(self, context, conf, internal_conf) -> InstanceManager:
         cloud_platform = conf['cloud.platform']

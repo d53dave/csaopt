@@ -3,6 +3,7 @@ import os
 import msgpack
 import msgpack_numpy
 import uuid
+import logging
 
 from dramatiq.brokers.redis import RedisBroker
 from dramatiq.brokers.stub import StubBroker
@@ -19,13 +20,15 @@ from ..utils import is_pytest_run
 
 msgpack_numpy.patch()
 
+log = logging.getLogger(__name__)
+
 
 class WorkerCommand(Enum):
     DeployModel = 'deploy_model'
     RunOptimization = 'run_optimization'
 
 
-class __MsgPackEncoder(dramatiq.Encoder):
+class _MsgPackEncoder(dramatiq.Encoder):
     # MessageData = typing.Dict[str, typing.Any]
     def encode(self, data: dramatiq.encoder.MessageData) -> bytes:
         return msgpack.packb(data, use_bin_type=True)
@@ -41,7 +44,7 @@ class Broker():
                  redis_password: str=None,
                  queue_ids: List[str]=[]) -> None:
 
-        assert len(queue_ids) > 0, 'At least one queue id is required'
+        log.warn('Constructing {} without queue_ids'.format(Broker))
 
         if is_pytest_run():
             broker = StubBroker
@@ -50,7 +53,7 @@ class Broker():
             self.dramatiq_broker = broker = RedisBroker(
                 host=redis_host, port=redis_password, password=redis_password)
 
-            msgpack_encoder = __MsgPackEncoder()
+            msgpack_encoder = _MsgPackEncoder()
             self.result_backend = backend = RedisBackend(encoder=msgpack_encoder)
             broker.add_middleware(Results(backend=backend))
 
@@ -60,17 +63,17 @@ class Broker():
         self.queue_ids: SortedSet = SortedSet(queue_ids)
         self.queue_messages: Dict[str, List[dramatiq.Message]] = defaultdict(list)
 
-    def get_queue_results(self, queue: Union[str, int]) -> List[Dict[str, Any]]:
+    def get_queue_results(self, queue: Union[str, int], timeout_ms=5000) -> List[Dict[str, Any]]:
         queue_id: str = self.__extract_queue_id(queue)
         results = []
         for msg in self.queue_messages[queue_id]:
-            results.append(msg.get_result(self.result_backend))
+            results.append(msg.get_result(self.result_backend, block=True, timeout=timeout_ms))
         return results
 
-    def get_all_results(self) -> Dict[str, List[Dict[str, Any]]]:
+    def get_all_results(self, timeout_ms=5000) -> Dict[str, List[Dict[str, Any]]]:
         results = {}
         for queue_id in self.queue_ids:
-            results[queue_id] = self.get_queue_results(queue_id)
+            results[queue_id] = self.get_queue_results(queue_id, timeout_ms=timeout_ms)
         return results
 
     def broadcast(self, command: WorkerCommand, payload: Dict[str, Any]):

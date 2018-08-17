@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from typing import List
+from typing import List, Dict
 from pyhocon import ConfigTree
 
 from . import Job, ExecutionType
@@ -32,6 +32,8 @@ class JobManager():
         self.configs = configs
         self.execution_type: ExecutionType = self._get_execution_type(models, configs)
         self.jobs: List[Job] = []
+        if self.broker is not None:
+            self.queue_models_deployed: Dict[str, bool] = {queue_id: False for queue_id in self.broker.queue_ids}
 
     def _get_execution_type(self, models: List[Model], configs: List[ConfigTree]) -> ExecutionType:
         len_models = len(models)
@@ -60,17 +62,24 @@ class JobManager():
 
     async def deploy_model(self):
         if self.execution_type is ExecutionType.SingleModelSingleConf:
-            self.broker.broadcast_deploy_model(self.models[0])
+            self.broker.broadcast(WorkerCommand.DeployModel,
+                                  self.models[0].to_dict())
         elif self.execution_type is ExecutionType.SingleModelMultiConf:
-            self.broker.broadcast_deploy_model(self.models[0])
+            self.broker.broadcast(WorkerCommand.DeployModel,
+                                  self.models[0].to_dict())
         else:
-            for n, worker_id in enumerate(self.broker.workers.keys()):
-                log.debug('Processing Worker {} with id {}'.format(n, worker_id))
-                self.broker.deploy_model(worker_id, self.models[n])
+            for n, queue_id in enumerate(self.broker.queue_ids):
+                log.debug('Deploying model to queue {} with id {}'.format(n, queue_id))
+                self.broker.send_to_queue(queue_id, WorkerCommand.DeployModel, self.models[n])
 
-        while not self.broker.model_deployed():
-            log.debug('Awaiting queue.models_deployed()')
-            asyncio.sleep(2)
+        results = self.broker.get_all_results(10000)
+        for queue_id, results in results.items():
+            for message in results:
+                if message == 'model_deployed':
+                    self.queue_models_deployed[queue_id] = True
+
+        assert not any((not model_deployed for queue_id, model_deployed in self.queue_models_deployed.items())), \
+            'Not all queues reported a deployed model'
 
         log.debug('queue.models_deployed() finished')
 
@@ -85,7 +94,7 @@ class JobManager():
         if self.execution_type is ExecutionType.SingleModelSingleConf:
             job = Job(self.models[0], self.configs[0])
             self.broker.broadcast(cmd, job.to_dict())
-            job.submitted_to.extend(self.broker.queue_ids) 
+            job.submitted_to.extend(self.broker.queue_ids)
             self.jobs.append(job)
         elif self.execution_type is ExecutionType.SingleModelMultiConf:
             for n, queue_id in enumerate(self.broker.queue_ids):

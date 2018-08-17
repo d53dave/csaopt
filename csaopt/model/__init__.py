@@ -39,8 +39,8 @@ class Model:
 
         return Model(d['name'],
                      d['dimensions'],
-                     precision,
-                     distribution,
+                     precision.value,
+                     distribution.value,
                      d['globals'],
                      d['functions'])
 

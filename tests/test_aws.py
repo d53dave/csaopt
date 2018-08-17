@@ -103,7 +103,7 @@ def test_get_instances(awstools):
         awstools.message_queue, awstools.workers = awstools._provision_instances(
             timeout_ms=100, count=4)
 
-        queue, workers = awstools._get_running_instances()
+        queue, workers = awstools.get_running_instances()
 
         assert len(workers) == 4
         assert queue is not None
