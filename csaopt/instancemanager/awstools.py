@@ -73,7 +73,7 @@ class AWSTools(InstanceManager):
         self.timeout_ms = config['cloud.aws.timeout']
 
         data_base = internal_conf['cloud.aws.userdata_rel_path']
-        with open(data_base + '-kafka.sh', 'rb') as queue_data, open(data_base + '-worker.sh', 'rb') as worker_data:
+        with open(data_base + '-broker.sh', 'rb') as queue_data, open(data_base + '-worker.sh', 'rb') as worker_data:
             self.user_data_scripts: Dict[str, bytes] = {
                 # 'queue': base64.encodebytes(queue_data.read()).decode('ascii'),
                 # 'worker': base64.encodebytes(worker_data.read()).decode('ascii')
