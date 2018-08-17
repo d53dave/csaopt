@@ -20,6 +20,8 @@ dependencies:
   - pytest-mock
   - pytest-asyncio
   - pip:
+    - numpy
+    - msgpack-numpy
     - sortedcontainers
     - dramatiq[redis, watch]
     - moto
@@ -27,7 +29,6 @@ dependencies:
     - apscheduler
     - coloredlogs
     - sty
-    - tinynumpy
     - pyhocon
     - mypy
     - sphinxcontrib-napoleon

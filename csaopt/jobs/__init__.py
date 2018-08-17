@@ -1,8 +1,8 @@
 import uuid
 import os
+import numpy as np
 
 from enum import Enum
-from tinynumpy import tinynumpy as np
 from typing import Dict, List, Any, Tuple
 
 from ..model import Model
@@ -29,8 +29,8 @@ class Job():
         self.params: Dict[str, Any] = opt_params
 
     def __repr__(self):
-        return 'Job[{}]: Model={}, Submitted={}, Completed={}, Params={}'.format(
-            self.id, self.model.name, self.was_submitted, self.completed, self.params)
+        return 'Job[{}]: Model={}, Queues={}, Completed={}, Params={}'.format(
+            self.id, self.model.name, self.submitted_to, self.completed, self.params)
 
     def to_dict(self):
         return {
