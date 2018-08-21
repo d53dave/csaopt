@@ -1,66 +1,133 @@
 
 import logging
 import uuid
+import time
+import sys
 
 from pyhocon import ConfigTree
-from typing import Tuple, List, Any
+from typing import Tuple, List, Any, Dict, Union, Type
 
 from .instancemanager import InstanceManager
 from . import Instance
+from ..utils import get_free_tcp_port, random_str
 
-logger = logging.getLogger()
-
-
-def __map_docker_to_instance(container, is_broker: bool=False) -> Instance:
-    return Instance(str(container.id), 'localhost', is_broker=is_broker, props=container.labels)
+log = logging.getLogger()
 
 
-class Local(InstanceManager):
+def _map_docker_to_instance(container, port=-1, is_broker: bool=False) -> Instance:
+    return Instance(str(container.name), '127.0.0.1', port=port, is_broker=is_broker, **container.labels)
+
+
+try:
+    import docker
+    DockerContainerT = Type[docker.models.containers.Container]
+    docker_available = True
+except ImportError:
+    pass
+
+
+class Local(InstanceManager[DockerContainerT]):
     def __init__(self, conf: ConfigTree, internal_conf: ConfigTree) -> None:
-        try:
-            import docker
-        except:
-            raise ImportError('docker-py required for local execution')
+        if not docker_available:
+            raise AssertionError(
+                'Trying to instantiate Local InstanceManager, but docker-py is not available.')
         self.docker_client = docker.from_env()
-        self.redis: docker.models.Container = None
-        self.worker: docker.models.Container = None
-        self.run_id = uuid.uuid4()
+        self.broker: DockerContainerT = None
+        self.worker: DockerContainerT = None
 
-    def _provision_instances(self, timeout_ms, count=2, **kwargs) -> Tuple[Any, List[Any]]:
-        redis = self.docker_client.containers.run(
-            'bitnami/redis', detach=True, labels={'csaopt_run': str(self.run_id)})
-        worker = self.docker_client.containers.run(
-            'd53dave/csaopt-worker', detach=True, environment=kwargs, labels={'csaopt_run': str(self.run_id)})
+        self.run_id = run_id = random_str(8)
+        self.broker_container_name = 'CSAOpt-Broker-' + run_id
+        self.worker_container_name = 'CSAOpt-Worker-' + run_id
+        self.broker_port: int = get_free_tcp_port()
 
-        return redis, [worker]
+    def _provision_instances(self, timeout_ms, count=2, **kwargs) -> Tuple[DockerContainerT, List[DockerContainerT]]:
+        self.broker = self.docker_client.containers.run(
+            'bitnami/redis',
+            ports={'6379/tcp': kwargs['HOST_REDIS_PORT']},
+            detach=True,
+            # network=self.docker_network.name,
+            environment={
+                'ALLOW_EMPTY_PASSWORD': 'yes'
+            },
+            name=self.broker_container_name)
 
-    def __refresh_containers(self) -> Tuple[Any, Any]:
-        redises = self.docker_client.list(filters={'label': 'csaopt_run=' + str(self.run_id),
-                                                   'ancestor': 'bitnami/redis'})
-        workers = self.docker_client.list(filters={'label': 'csaopt_run=' + str(self.run_id),
-                                                   'ancestor': 'd53dave/csaopt-worker'})
+        broker_ip = ''
 
-        assert len(redises) == 1 and len(workers) == 1
-        return redises[0], workers[0]
+        while broker_ip is None or len(broker_ip.strip()) == 0:
+            time.sleep(0.3)
+            self.broker.reload()
+            broker_ip = self.broker.attrs['NetworkSettings']['Networks']['bridge']['IPAddress']
+
+        time.sleep(1.5)
+        kwargs['REDIS_HOST'] = broker_ip
+
+        self.worker = self.docker_client.containers.run(
+            'd53dave/csaopt-worker',
+            detach=True,
+            # network=self.docker_network.name,
+            environment=kwargs,
+            labels={'queue_id': self.worker_container_name},
+            name=self.worker_container_name)
+
+        while self.broker.status != 'running' or self.worker.status != 'running':
+            # TODO this needs to respect timeout
+            time.sleep(1)
+            self.broker, self.worker = self.__refresh_containers()
+
+        return self.broker, [self.worker]
+
+    def __refresh_containers(self) -> Tuple[DockerContainerT, DockerContainerT]:
+        broker = self.docker_client.containers.get(self.broker_container_name)
+        worker = self.docker_client.containers.get(self.worker_container_name)
+
+        return broker, worker
 
     def get_running_instances(self) -> Tuple[Instance, List[Instance]]:
         """Returns the currently managed instances"""
-        redis, workers = self.__refresh_containers()
-        return __map_docker_to_instance(redis, is_broker=True), [__map_docker_to_instance(workers[0])]
+        broker, worker = self.__refresh_containers()
+        return (
+            _map_docker_to_instance(
+                broker, port=self.broker_port, is_broker=True),
+            [_map_docker_to_instance(worker)]
+        )
 
     def _terminate_instances(self, timeout_ms) -> None:
         self.worker.kill()
-        self.redis.kill()
+        self.broker.kill()
 
     def _run_start_scripts(self, timeout_ms) -> None:
         pass
 
-    def __enter__(self) -> None:
-        """InstanceManager is a ContextManager"""
+    def __enter__(self) -> InstanceManager:
 
-        self.redis, workers = self._provision_instances(timeout_ms=10000)
+        # No broker password for the local, docker-driven case
+        env: Dict[str, Union[str, int]] = {
+            'REDIS_HOST': self.broker_container_name,
+            'WORKER_QUEUE_ID': self.worker_container_name
+        }
+
+        if self.broker_port is not None:
+            env['HOST_REDIS_PORT'] = self.broker_port
+
+        self.docker_network = self.docker_client.networks.create(
+            name='CSAOpt' + self.run_id)
+
+        self.broker, workers = self._provision_instances(
+            timeout_ms=10000, **env)
         self.worker = workers[0]
 
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
-        """Cleanup resources on exit"""
-        self._terminate_instances(timeout_ms=10000)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> bool:
+        try:
+            # TODO replace warn with debug
+            log.warn('Broker logs: \n' +
+                     self.broker.logs().decode('utf-8'))
+            log.warn('Worker logs: \n' +
+                     self.worker.logs().decode('utf-8'))
+            self._terminate_instances(timeout_ms=10000)
+            self.docker_network.remove()
+        except Exception as e:
+            log.warn(
+                'An exception occured while killing docker containers: ' + str(e))
+        return False
