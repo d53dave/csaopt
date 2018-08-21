@@ -22,8 +22,8 @@ class Job():
         self.id = str(uuid.uuid4())
         self.message_id: str = None
         self.model: Model = model
-        self.results: List[List[np.ndarray]] = []
-        self.values: List[List[float]] = []
+        self.results: List[np.ndarray] = []
+        self.values: List[float] = []
         self.completed: bool = False
         self.submitted_to: List[str] = []
         self.params: Dict[str, Any] = opt_params

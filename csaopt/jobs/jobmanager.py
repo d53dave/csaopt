@@ -20,6 +20,7 @@ class JobManager():
     the msgqueue client class.
 
     """
+
     def __init__(self,
                  ctx,
                  broker: Broker,
@@ -30,10 +31,23 @@ class JobManager():
         self.models_deployed = False
         self.models = models
         self.configs = configs
-        self.execution_type: ExecutionType = self._get_execution_type(models, configs)
+        self.execution_type: ExecutionType = self._get_execution_type(
+            models, configs)
         self.jobs: List[Job] = []
         if self.broker is not None:
-            self.queue_models_deployed: Dict[str, bool] = {queue_id: False for queue_id in self.broker.queue_ids}
+            self.queue_models_deployed: Dict[str, bool] = {
+                queue_id: False for queue_id in self.broker.queue_ids}
+
+    def wait_for_worker_join(self):
+        joined_workers = []
+        for queue_id in self.broker.queue_ids:
+            if self.broker.ping(queue_id) is True:
+                joined_workers.append(queue_id)
+            else:
+                raise AssertionError(
+                    'Worker {} failed to join'.format(queue_id))
+
+        return joined_workers
 
     def _get_execution_type(self, models: List[Model], configs: List[ConfigTree]) -> ExecutionType:
         len_models = len(models)
@@ -69,14 +83,20 @@ class JobManager():
                                   self.models[0].to_dict())
         else:
             for n, queue_id in enumerate(self.broker.queue_ids):
-                log.debug('Deploying model to queue {} with id {}'.format(n, queue_id))
-                self.broker.send_to_queue(queue_id, WorkerCommand.DeployModel, self.models[n])
+                log.debug(
+                    'Deploying model to queue {} with id {}'.format(n, queue_id))
+                self.broker.send_to_queue(
+                    queue_id, WorkerCommand.DeployModel, self.models[n])
 
         results = self.broker.get_all_results(10000)
         for queue_id, results in results.items():
             for message in results:
                 if message == 'model_deployed':
                     self.queue_models_deployed[queue_id] = True
+                else:
+                    log.warn(
+                        'Worker on Queue %s didn\'nt successfully deploy model: "%s"', queue_id, message)
+                    log.warn('Results: ' + repr(results))
 
         assert not any((not model_deployed for queue_id, model_deployed in self.queue_models_deployed.items())), \
             'Not all queues reported a deployed model'
@@ -87,7 +107,8 @@ class JobManager():
 
     def submit(self) -> List[Job]:
         if not self.models_deployed:
-            raise AssertionError('Trying to submit job without deploying model')
+            raise AssertionError(
+                'Trying to submit job without deploying model')
 
         cmd = WorkerCommand.RunOptimization
 
@@ -118,8 +139,16 @@ class JobManager():
         return self.jobs
 
     async def wait_for_results(self) -> None:
+        if not self.models_deployed:
+            raise AssertionError(
+                'wait_for_results called but no models are deployed')
         if len(self.jobs) == 0:
-            raise AssertionError('wait_for_results called but no jobs submitted')
-        while any(not job.completed for job in self.jobs):
-            log.debug('Waiting for results...')
-            asyncio.sleep(2.5)
+            raise AssertionError(
+                'wait_for_results called but no jobs submitted')
+
+        results = self.broker.get_all_results()
+        for job in self.jobs:
+            for queue_id in job.submitted_to:
+                for message in results[queue_id]:
+                    job.values.append(message['value'])
+                    job.results.append(message['state'])
