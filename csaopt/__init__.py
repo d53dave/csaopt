@@ -1,5 +1,3 @@
-__all__ = ['modelcompiler', 'aws', 'msgqclient']
-
 __version__ = '0.1.0'
 __appname__ = 'CSAOpt: Cloud based, GPU accelerated Simulated Annealing'
 
@@ -10,6 +8,7 @@ import sys
 import subprocess
 import unicodedata
 import re
+import json
 
 from pyhocon import ConfigTree
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -20,13 +19,14 @@ from sty import fg, ef, rs
 from datetime import datetime
 from async_timeout import timeout
 
-from .broker import Broker
 from .model_loader.model_loader import ModelLoader
 from .model import Model
 from .utils import get_configs
 from .instancemanager.instancemanager import InstanceManager
 from .instancemanager.awstools import AWSTools
+from .instancemanager.local import Local
 from .jobs.jobmanager import Job, JobManager, ExecutionType
+from .broker import Broker
 
 logger = logging.getLogger('csaopt.Runner')
 fg.set('csaopt_magenta', 'rgb', (199, 51, 147))
@@ -57,7 +57,8 @@ class ConsolePrinter:
             if columns < max_columns:
                 self.columns = columns
         except:
-            logger.debug('Could not get stty size, it seems there is no console available.')
+            logger.debug(
+                'Could not get stty size, it seems there is no console available.')
 
     @staticmethod
     def _format_to_width(width: int, txt: str, status: str) -> str:
@@ -108,8 +109,8 @@ class ConsolePrinter:
             self.scheduler.remove_all_jobs()
             self.println(ConsolePrinter._format_to_width(
                 self.columns,
-                self.last_line[0:len(
-                    self.last_line) - len(ConsolePrinter.status_done)],
+                self.last_line[0:self.columns -
+                               len(ConsolePrinter.status_done)],
                 fg.green + ConsolePrinter.status_done))
 
     def spinner_failure(self) -> None:
@@ -134,24 +135,26 @@ class Runner:
         self.model_paths = model_paths
         self.invocation_options = invocation_options
         self.loop = asyncio.get_event_loop()
-        self.models: List[Model] = None
-        self.failures = None
+        self.models: List[Model] = []
+        self.failures: List[str] = []
 
         self.console_printer.print_magenta(
             ef.bold + 'Welcome to CSAOpt v{}\n\n'.format(__version__))
 
-
-
     def _get_instance_manager(self, context, conf, internal_conf) -> InstanceManager:
+        if conf['cloud.disabled'] is True:
+            return Local(conf, internal_conf)
+
         cloud_platform = conf['cloud.platform']
         if cloud_platform == 'aws':
             return AWSTools(context, conf, internal_conf)
         # elif cloud_platform == 'gcp' etc...
             # return GCPTools()
         else:
-            raise AttributeError('Cloud platform ' + cloud_platform + ' unrecognized.')
+            raise AttributeError('Cloud platform ' +
+                                 cloud_platform + ' unrecognized.')
 
-    def dupicate_cloud_configs(configs):
+    def duplicate_cloud_configs(self, configs):
         # TODO this needs to be clearly stated in documentation
         for config in configs:
             if config.get('cloud', None) is not None:
@@ -164,75 +167,97 @@ class Runner:
             config['cloud'] = cloud_conf
 
     async def _run_async(self, loop):
-        self.console_printer.print_with_spinner('Loading Config')
+        printer = self.console_printer
+        printer.print_with_spinner('Loading Config')
         try:
-            exec_type = self._get_execution_type(self.model_paths, self.conf_paths)
-
             configs = [get_configs(conf_path) for conf_path in self.conf_paths]
-            self.dupicate_cloud_configs(configs)
+            self.duplicate_cloud_configs(configs)
 
             internal_conf = self.invocation_options['internal_conf']
 
-            ctx = Context(self.console_printer, configs, internal_conf)
+            ctx = Context(printer, configs, internal_conf)
         except Exception as e:
-            self.console_printer.spinner_failure()
+            printer.spinner_failure()
             self.failures.append('Error while loading config: ' + str(e))
             raise e
+        printer.spinner_success()
 
-        self.console_printer.print_with_spinner('Loading Models')
+        printer.print_with_spinner('Loading Models')
         for idx, model_path in enumerate(self.model_paths):
-            configs[idx]['model']['path'] = self.model_path
-            self.console_printer.spinner_success()
-            logger.debug('Loading model {}'.format(self.model))
+            configs[idx]['model']['path'] = model_path
+            logger.debug('Loading model {}'.format(model_path))
             loader = ModelLoader(configs[idx], internal_conf)
-            self.models[idx] = loader.get_model()
+            self.models.insert(idx, loader.get_model())
             logger.debug('Models loaded succesfully.')
-            self.console_printer.spinner_success()
+        printer.spinner_success()
 
         # Get cloud config, create instance manager
         self.cloud_config = configs[0]
 
-        self.console_printer.print_with_spinner(
-            'Starting instances on {}'.format(self.cloud_config['cloud.platform'].upper()))
-        with self._get_instance_manager(ctx, self.cloud_config, internal_conf) as instancemanager:
-            self.console_printer.spinner_success()
-            self.console.printer.print_with_spinner('Waiting for broker to come online')
+        if self.cloud_config['cloud.disabled'] is True:
+            start_msg = 'Starting local instances with docker'
+        else:
+            start_msg = 'Starting instances on {}'.format(
+                self.cloud_config['cloud.platform'].upper())
 
-            queue, _ = instancemanager.get_instances()
+        printer.print_with_spinner(start_msg)
+
+        with self._get_instance_manager(ctx, self.cloud_config, internal_conf) as instancemanager:
+            printer.spinner_success()
+            printer.print_with_spinner(
+                'Waiting for broker to come online')
+
+            broker_instance, workers = instancemanager.get_running_instances()
+
+            queue_ids: List[str] = []
+            for worker in workers:
+                if 'queue_id' in worker.props:
+                    queue_ids.append(worker.props['queue_id'])
+
+            assert len(
+                queue_ids) > 0, 'There should be at least one worker running'
             async with timeout(30) as async_timeout:
-                broker: Broker = Broker()
-                self.console_printer.spinner_success()
+                broker: Broker = Broker(
+                    host=str(broker_instance.public_ip), port=broker_instance.port, queue_ids=queue_ids)
+                printer.spinner_success()
 
             if async_timeout.expired:
-                self.console_printer.spinner_failure()
-                raise TimeoutError('Timed out waiting for broker to come online')
+                printer.spinner_failure()
+                raise TimeoutError(
+                    'Timed out waiting for broker to come online')
 
-            jobmanager = JobManager(ctx, exec_type, queue_client, self.model)
-            jobmanager.deploy_model()
+            jobmanager = JobManager(ctx, broker, self.models, configs)
 
-            self.console_printer.print_with_spinner('Running Simulated Annealing')
+            for worker_id in jobmanager.wait_for_worker_join():
+                printer.println(
+                    'Worker {} joined'.format(worker_id))
+
+            await jobmanager.deploy_model()
+
+            printer.print_with_spinner(
+                'Running Simulated Annealing')
             # TODO: this needs timeouts
-            jobs: List[Job] = await jobmanager.submit()
+            jobs: List[Job] = jobmanager.submit()
             await jobmanager.wait_for_results()
 
-            self.console_printer.print_with_spinner('Retrieving results')
-            self.console_printer.spinner_success()
+            printer.print_with_spinner('Retrieving results')
+            printer.spinner_success()
 
-            self.console_printer.print_with_spinner('Scanning for best result')
+            printer.print_with_spinner('Scanning for best result')
             # TODO: determine which worker reported this result
-            jobs.count()
-            self.console_printer.spinner_success()
+            len(jobs)
+            printer.spinner_success()
 
-            # self.console_printer.println('Evaluated: {} State: {}'.format(val_min, best_res))
+            # printer.println('Evaluated: {} State: {}'.format(val_min, best_res))
 
             # if configs[0]['TODO']:
-            #     self.console_printer.print_with_spinner('Saving best result to file: TODO')
+            #     printer.print_with_spinner('Saving best result to file: TODO')
             #     try:
             #         job.write_files()
-            #         self.console_printer.spinner_success()
+            #         printer.spinner_success()
             #     except Exception as e:
             #         self.failures.append('Could not write to file: {}'.format(e))
-            #         self.console_printer.spinner_failure()
+            #         printer.spinner_failure()
 
     def run(self) -> None:
         """
@@ -257,9 +282,7 @@ class Context:
     def __init__(self,
                  console_printer: ConsolePrinter,
                  configs: ConfigTree,
-                 internal_config: ConfigTree,
-                 exec_type: ExecutionType=None) -> None:
+                 internal_config: ConfigTree) -> None:
         self.console_printer: ConsolePrinter = console_printer
         self.configs = configs
         self.internal_config = internal_config
-        self.exec_type = exec_type
