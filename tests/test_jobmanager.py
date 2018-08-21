@@ -32,7 +32,7 @@ def stub_worker(stub_broker):
 @pytest.mark.asyncio
 async def test_submit_model_not_deployed(stub_broker):
     # TODO Remove ExecutionType from AppContext, it's not required
-    ctx = AppContext(None, None, None, ExecutionType.SingleModelSingleConf)
+    ctx = AppContext(None, None, None)
     model = Model(name='testmodel',
                   dimensions=3,
                   precision=Precision.Float32,
@@ -49,7 +49,7 @@ async def test_submit_model_not_deployed(stub_broker):
 
 @pytest.mark.asyncio
 async def test_wait_empty_jobs(stub_broker):
-    ctx = AppContext(None, None, None, ExecutionType.SingleModelSingleConf)
+    ctx = AppContext(None, None, None)
     model = Model(name='testmodel',
                   dimensions=3,
                   precision=Precision.Float32,
@@ -66,7 +66,7 @@ async def test_wait_empty_jobs(stub_broker):
 
 @pytest.mark.asyncio
 async def test_deploy_single_model_single_conf(mocker, stub_broker):
-    ctx = AppContext(None, None, None, ExecutionType.SingleModelSingleConf)
+    ctx = AppContext(None, None, None)
     model = Model(name='testmodel',
                   dimensions=3,
                   precision=Precision.Float32,
@@ -88,7 +88,7 @@ async def test_deploy_single_model_single_conf(mocker, stub_broker):
 
 @pytest.mark.asyncio
 async def test_deploy_single_model_single_conf_failed_missing_response(mocker, stub_broker):
-    ctx = AppContext(None, None, None, ExecutionType.SingleModelSingleConf)
+    ctx = AppContext(None, None, None)
     model = Model(name='testmodel',
                   dimensions=3,
                   precision=Precision.Float32,
@@ -111,7 +111,7 @@ async def test_deploy_single_model_single_conf_failed_missing_response(mocker, s
 
 @pytest.mark.asyncio
 async def test_deploy_single_model_single_conf_failed_with_error(mocker, stub_broker):
-    ctx = AppContext(None, None, None, ExecutionType.SingleModelSingleConf)
+    ctx = AppContext(None, None, None)
     model = Model(name='testmodel',
                   dimensions=3,
                   precision=Precision.Float32,
@@ -135,7 +135,7 @@ async def test_deploy_single_model_single_conf_failed_with_error(mocker, stub_br
 
 @pytest.mark.asyncio
 async def test_deploy_single_model_multi_conf(mocker, stub_broker):
-    ctx = AppContext(None, None, None, ExecutionType.SingleModelMultiConf)
+    ctx = AppContext(None, None, None)
     model = Model(name='testmodel',
                   dimensions=3,
                   precision=Precision.Float32,
@@ -160,7 +160,7 @@ async def test_deploy_single_model_multi_conf(mocker, stub_broker):
 
 @pytest.mark.asyncio
 async def test_deploy_multi_model_single_conf(mocker, stub_broker):
-    ctx = AppContext(None, None, None, ExecutionType.MultiModelSingleConf)
+    ctx = AppContext(None, None, None)
     model = Model(name='testmodel1',
                   dimensions=3,
                   precision=Precision.Float32,
@@ -192,7 +192,7 @@ async def test_deploy_multi_model_single_conf(mocker, stub_broker):
 
 @pytest.mark.asyncio
 async def test_deploy_multi_model_multi_conf(mocker, stub_broker):
-    ctx = AppContext(None, None, None, ExecutionType.MultiModelMultiConf)
+    ctx = AppContext(None, None, None)
     model = Model(name='testmodel1',
                   dimensions=3,
                   precision=Precision.Float32,
@@ -224,7 +224,7 @@ async def test_deploy_multi_model_multi_conf(mocker, stub_broker):
 
 @pytest.mark.asyncio
 async def test_job_single_model_single_conf(stub_broker, mocker):
-    ctx = AppContext(None, None, None, ExecutionType.SingleModelSingleConf)
+    ctx = AppContext(None, None, None)
     models = [Model(name='testmodel',
                     dimensions=3,
                     precision=Precision.Float32,
@@ -250,7 +250,7 @@ async def test_job_single_model_single_conf(stub_broker, mocker):
 
 @pytest.mark.asyncio
 async def test_job_multi_model_single_conf(stub_broker, mocker):
-    ctx = AppContext(None, None, None, ExecutionType.MultiModelSingleConf)
+    ctx = AppContext(None, None, None)
     models = [Model(name='testmodel1',
                     dimensions=3,
                     precision=Precision.Float32,
@@ -288,7 +288,7 @@ async def test_job_multi_model_single_conf(stub_broker, mocker):
 
 @pytest.mark.asyncio
 async def test_job_single_model_multi_conf(stub_broker, mocker):
-    ctx = AppContext(None, None, None, ExecutionType.SingleModelMultiConf)
+    ctx = AppContext(None, None, None)
     models = [Model(name='testmodel1',
                     dimensions=3,
                     precision=Precision.Float32,
@@ -321,7 +321,7 @@ async def test_job_single_model_multi_conf(stub_broker, mocker):
 
 @pytest.mark.asyncio
 async def test_job_multi_model_multi_conf(stub_broker, mocker):
-    ctx = AppContext(None, None, None, ExecutionType.MultiModelMultiConf)
+    ctx = AppContext(None, None, None)
     models = [Model(name='testmodel1',
                     dimensions=3,
                     precision=Precision.Float32,

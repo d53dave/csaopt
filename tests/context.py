@@ -7,7 +7,7 @@ from distutils import dir_util
 sys.path.insert(0, os.path.abspath('.'))
 
 from csaopt import Runner, ExecutionType, ConsolePrinter, Context as AppContext
-from csaopt.utils import get_own_ip
+from csaopt.utils import get_own_ip, get_configs
 from csaopt.model import Model, RandomDistribution, Precision
 from csaopt.model_loader.model_loader import ModelLoader, ModelValidator, ValidationError
 from csaopt.jobs.jobmanager import JobManager, Job

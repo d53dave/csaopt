@@ -102,7 +102,7 @@ def test_start_instances(awstools):
 def test_get_instances(awstools):
     with mock_ec2():
         awstools.security_group_id = 'test_sec_group'
-        awstools.message_queue, awstools.workers = awstools._provision_instances(
+        awstools.broker, awstools.workers = awstools._provision_instances(
             timeout_ms=100, count=4)
 
         queue, workers = awstools.get_running_instances()
@@ -117,7 +117,7 @@ def test_context_manager(context):
                       body='192.168.0.1', status=200)
         with AWSTools(context, context.configs[0], context.internal_config) as awstools:
             worker_instance_ids = [w.id for w in awstools.workers]
-            queue_id = awstools.message_queue.id
+            queue_id = awstools.broker.id
             assert len(awstools.ec2_client.describe_instances()) == 2
 
         for instance in awstools.ec2_resource.instances.all():
