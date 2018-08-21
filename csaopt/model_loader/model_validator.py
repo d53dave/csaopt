@@ -24,7 +24,8 @@ class ModelValidator:
         'generate_next': 3,
         'cool': 1,
         'evaluate': 1,
-        'acceptance_func': 3
+        'acceptance_func': 3,
+        'empty_state': 0
     }
 
     def validate_functions(self, functions: Dict[str, Callable], internal_config: ConfigTree) -> List[ValidationError]:
@@ -71,14 +72,14 @@ class ModelValidator:
         """Returns a ValidationError if function is missing"""
         if fun is None:
             return ValidationError(
-                    'Definition of function `{}` not found.'.format(name))
+                'Definition of function `{}` not found.'.format(name))
         return None
 
     def _validate_empty_fun(self, name, fun) -> Optional[ValidationError]:
         """Returns a ValidationError if function has no body (i.e. only pass, return)"""
         if fun.__code__.co_code == self.empty_function_bytecode:
             return ValidationError(
-                    'Definition of function `{}` is empty.'.format(name))
+                'Definition of function `{}` is empty.'.format(name))
         return None
 
     def _validate_fun_signature_len(self, name, fun, num_params) -> Optional[ValidationError]:

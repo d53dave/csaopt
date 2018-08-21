@@ -34,7 +34,7 @@ class ModelLoader():
             if typecheck_error is not None:
                 self.errors.append(typecheck_error)
 
-        self.errors.extend(validator.validate_functions(functions))
+        self.errors.extend(validator.validate_functions(functions, internal_conf))
 
         if len(self.errors) == 0:
             self.model = self._create_model(model_name, self.model_module, opt_globals, functions)

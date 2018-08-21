@@ -28,24 +28,19 @@ def dimensions() -> int:
     return 2
 
 
-def state_shape() -> Tuple:
-    return (3,)
+def empty_state() -> Tuple:
+    return (0.0, 0.0)
 
 
 # Functions
 
 
-def cool(old_temp: float) -> float:
-    return old_temp * 0.96
+def cool(initial_temp: float, old_temp: float, step: int) -> float:
+    return initial_temp * math.pow(0.95, step)
 
 
 def acceptance_func(e1: float, e2: float, temp: float) -> bool:
     return math.exp(-(e2 - e1) / temp) > 0.5
-
-
-def empty_state(state: MutableSequence):
-    for i in range(len(state)):
-        state[i] = 0.0
 
 
 def initialize(state: MutableSequence, randoms: Sequence[float]) -> None:
