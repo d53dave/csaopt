@@ -23,7 +23,7 @@ class RequiredFunctions(Enum):
     Cool = 'cool'
     Evaluate = 'evaluate'
     Acceptance = 'acceptance_func'
-    StateShape = 'state_shape'
+    EmptyState = 'empty_state'
 
 
 class Model:

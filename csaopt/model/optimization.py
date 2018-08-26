@@ -17,7 +17,7 @@ def dimensions() -> int:
     pass
 
 
-def state_shape() -> Tuple:
+def empty_state() -> Tuple:
     pass
 
 
@@ -32,7 +32,7 @@ def initialize(state: object, randoms: Sequence[float]) -> object:
     pass
 
 
-def cool(old_temp: float) -> float:
+def cool(initial_temp: float, old_temp: float, step: int) -> float:
     pass
 
 

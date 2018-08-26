@@ -40,7 +40,7 @@ def cool(initial_temp: float, old_temp: float, step: int) -> float:
 
 
 def acceptance_func(e1: float, e2: float, temp: float) -> bool:
-    return math.exp(-(e2 - e1) / temp) > 0.5
+    return math.exp(-(e2 - e1) / (temp + 1e-9)) > 0.5
 
 
 def initialize(state: MutableSequence, randoms: Sequence[float]) -> None:

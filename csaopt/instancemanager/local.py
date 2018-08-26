@@ -39,6 +39,7 @@ class Local(InstanceManager[DockerContainerT]):
         self.broker_container_name = 'CSAOpt-Broker-' + run_id
         self.worker_container_name = 'CSAOpt-Worker-' + run_id
         self.broker_port: int = get_free_tcp_port()
+        self.debug_on_cpu = conf.get('debug.gpu_simulator')
 
     def _provision_instances(self, timeout_ms, count=2, **kwargs) -> Tuple[DockerContainerT, List[DockerContainerT]]:
         self.broker = self.docker_client.containers.run(
@@ -94,29 +95,39 @@ class Local(InstanceManager[DockerContainerT]):
     def _terminate_instances(self, timeout_ms) -> None:
         self.worker.kill()
         self.broker.kill()
+        self.worker.wait()
+        self.broker.wait()
 
     def _run_start_scripts(self, timeout_ms) -> None:
         pass
 
     def __enter__(self) -> InstanceManager:
+        try:
+            # No broker password for the local, docker-driven case
+            env: Dict[str, Union[str, int]] = {
+                'REDIS_HOST': self.broker_container_name,
+                'WORKER_QUEUE_ID': self.worker_container_name
+            }
 
-        # No broker password for the local, docker-driven case
-        env: Dict[str, Union[str, int]] = {
-            'REDIS_HOST': self.broker_container_name,
-            'WORKER_QUEUE_ID': self.worker_container_name
-        }
+            if self.broker_port is not None:
+                env['HOST_REDIS_PORT'] = self.broker_port
 
-        if self.broker_port is not None:
-            env['HOST_REDIS_PORT'] = self.broker_port
+            if self.debug_on_cpu:
+                env['NUMBA_ENABLE_CUDASIM'] = '1'
 
-        self.docker_network = self.docker_client.networks.create(
-            name='CSAOpt' + self.run_id)
+            self.docker_network = self.docker_client.networks.create(
+                name='CSAOpt' + self.run_id)
 
-        self.broker, workers = self._provision_instances(
-            timeout_ms=10000, **env)
-        self.worker = workers[0]
+            self.broker, workers = self._provision_instances(
+                timeout_ms=10000, **env)
+            self.worker = workers[0]
 
-        return self
+            return self
+        except Exception as e:
+            log.exception(
+                'An exception occured while starting docker containers')
+            raise SystemError(
+                'An exception occured while starting docker containers: {}'.format(repr(e)))
 
     def __exit__(self, exc_type, exc_value, traceback) -> bool:
         try:

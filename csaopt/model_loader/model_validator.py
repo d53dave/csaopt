@@ -22,7 +22,7 @@ class ModelValidator:
         'dimensions': 0,
         'initialize': 2,
         'generate_next': 3,
-        'cool': 1,
+        'cool': 3,
         'evaluate': 1,
         'acceptance_func': 3,
         'empty_state': 0
