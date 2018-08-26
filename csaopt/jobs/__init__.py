@@ -3,11 +3,17 @@ import os
 import numpy as np
 
 from enum import Enum
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Optional, Type
 
 from ..model import Model
 
 __all__ = ['jobmanager']
+
+
+Failure = Optional[
+    Tuple[Optional[Type[BaseException]],
+          Optional[BaseException],
+          str]]
 
 
 class ExecutionType(Enum):
@@ -25,6 +31,7 @@ class Job():
         self.results: List[np.ndarray] = []
         self.values: List[float] = []
         self.completed: bool = False
+        self.failure: Failure = None
         self.submitted_to: List[str] = []
         self.params: Dict[str, Any] = opt_params
 
@@ -57,5 +64,7 @@ class Job():
                         path, '{}_data_{}{}.{}'.format(self.id, idx, inner_idx, suffix))
                     output_file_values = os.path.join(
                         path, '{}_data_{}{}.{}'.format(self.id, idx, inner_idx, suffix))
-                    ndarr.tofile(output_file_results, sep=('' if binary else ','))
-                    ndarr.tofile(output_file_values, sep=('' if binary else ','))
+                    ndarr.tofile(output_file_results,
+                                 sep=('' if binary else ','))
+                    ndarr.tofile(output_file_values,
+                                 sep=('' if binary else ','))

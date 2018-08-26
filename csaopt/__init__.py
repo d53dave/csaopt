@@ -16,7 +16,7 @@ from apscheduler.job import Job as ApJob
 from asyncio.selector_events import BaseSelectorEventLoop
 from typing import Dict, Optional, List, Any
 from sty import fg, ef, rs
-from datetime import datetime
+from datetime import datetime, timedelta
 from async_timeout import timeout
 
 from .model_loader.model_loader import ModelLoader
@@ -95,17 +95,20 @@ class ConsolePrinter:
             lambda: self.print('\r' + ConsolePrinter._format_to_width(
                 self.columns,
                 txt,
-                self.spinner[self.spinner_idx] + '    ')),
+                fg.csaopt_magenta + self.spinner[self.spinner_idx] + '    ')),
             'interval',
             seconds=0.42,
             id='print_job',
             max_instances=1,
-            next_run_time=datetime.now())  # run now once, then periodically
+            next_run_time=datetime.now() + timedelta(milliseconds=50))  # run in 50ms, then periodically
 
     def spinner_success(self) -> None:
         # If log level < warn, just re-print with 'Done.'
         # Truncate to console width to fit message
         if self.log_level == 'info':
+            if self.print_job is not None:
+                self.print_job.pause()
+                self.print_job.remove()
             self.scheduler.remove_all_jobs()
             self.println(ConsolePrinter._format_to_width(
                 self.columns,
@@ -120,7 +123,7 @@ class ConsolePrinter:
             self.scheduler.remove_all_jobs()
             self.println(ConsolePrinter._format_to_width(
                 self.columns,
-                self.last_line[0:len(self.last_line) -
+                self.last_line[0:self.columns -
                                len(ConsolePrinter.status_failed)],
                 fg.red + ConsolePrinter.status_failed))
 
@@ -228,17 +231,33 @@ class Runner:
 
             jobmanager = JobManager(ctx, broker, self.models, configs)
 
-            for worker_id in jobmanager.wait_for_worker_join():
+            for worker_id in (await jobmanager.wait_for_worker_join()):
                 printer.println(
                     'Worker {} joined'.format(worker_id))
 
-            await jobmanager.deploy_model()
+            printer.print_with_spinner('Deploying model')
+            try:
+                await jobmanager.deploy_model()
+            except Exception:
+                msg = 'An exception occured during model deployment.'
+                logger.exception(msg)
+                printer.spinner_failure()
+                self.failures.append(msg)
+                return
+
+            printer.spinner_success()
+
+            await asyncio.sleep(0.8)
 
             printer.print_with_spinner(
                 'Running Simulated Annealing')
+
+            await asyncio.sleep(1)
             # TODO: this needs timeouts
-            jobs: List[Job] = jobmanager.submit()
+            jobs: List[Job] = await jobmanager.submit()
+
             await jobmanager.wait_for_results()
+            printer.spinner_success()
 
             printer.print_with_spinner('Retrieving results')
             printer.spinner_success()

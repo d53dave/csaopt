@@ -5,10 +5,12 @@ import msgpack_numpy
 import uuid
 import logging
 import sys
+import asyncio
 
+from async_timeout import timeout
 from dramatiq.brokers.redis import RedisBroker
 from dramatiq.brokers.stub import StubBroker
-from dramatiq.results import Results
+from dramatiq.results import Results, ResultMissing
 from dramatiq.results.backends import RedisBackend
 from dramatiq import Message
 from typing import Dict, Any, List, Union
@@ -71,6 +73,9 @@ class Broker():
         self.queue_messages: Dict[str,
                                   List[dramatiq.Message]] = defaultdict(list)
 
+    def clear_queue_messages(self):
+        self.queue_messages.clear()
+
     def ping(self, queue: Union[str, int]) -> bool:
         queue_id = self.__extract_queue_id(queue)
 
@@ -87,19 +92,53 @@ class Broker():
 
         return result == 'pong'
 
-    def get_queue_results(self, queue: Union[str, int], timeout_ms=5000) -> List[Dict[str, Any]]:
-        queue_id: str = self.__extract_queue_id(queue)
-        results = []
-        for msg in self.queue_messages[queue_id]:
-            results.append(msg.get_result(backend=self.result_backend,
-                                          block=True, timeout=timeout_ms))
-        return results
+    async def get_queue_results(self, queue: Union[str, int], timeout=10.0) -> List[Dict[str, Any]]:
+        for queue_id in self.queue_ids:
+            results = await self.get_results(
+                queues=[self.__extract_queue_id(queue)], result_timeout=timeout)
 
-    def get_all_results(self, timeout_ms=5000) -> Dict[str, List[Dict[str, Any]]]:
+        return results[queue_id]
+
+    async def get_all_results(self, timeout=10.0):
         results = {}
         for queue_id in self.queue_ids:
-            results[queue_id] = self.get_queue_results(
-                queue_id, timeout_ms=timeout_ms)
+            results = await self.get_results(
+                queues=self.queue_ids, result_timeout=timeout)
+        return results
+
+    async def get_results(self, queues: List[str], result_timeout: float=10.0) -> Dict[str, List[Dict[str, Any]]]:
+        messages_to_process: Dict[str, List[dramatiq.Message]] = {}
+        for queue_id in self.queue_ids:
+            for message in self.queue_messages[queue_id]:
+                messages_to_process[message.message_id] = message
+        log.warn('Messages to process is [{}]'.format(messages_to_process))
+
+        message_ids_processed: List[str] = []
+        results: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+
+        async with timeout(result_timeout) as timeout_cm:
+            while len(messages_to_process) > 0:
+                for msg in messages_to_process.values():
+                    try:
+                        results[msg.queue_name].append(msg.get_result(  # type: ignore
+                            backend=self.result_backend, timeout=int(result_timeout * 1e3)))
+
+                        message_ids_processed.append(
+                            msg.message_id)  # type: ignore
+                    except ResultMissing:
+                        pass
+
+                # Remove all processed messages from messages_to_process list
+                for message_id in message_ids_processed:
+                    messages_to_process.pop(message_id, None)
+
+                log.debug('Sleeping for {} seconds, there is/are still {} messages to be processed.'.format(
+                    max(1.0, result_timeout / 10.0), len(messages_to_process)))
+                await asyncio.sleep(max(1.0, result_timeout / 10.0))
+
+        if timeout_cm.expired:
+            raise TimeoutError('Timed out while waiting for results')
+
         return results
 
     def broadcast(self, command: WorkerCommand, payload: Dict[str, Any]):
@@ -115,6 +154,7 @@ class Broker():
             args=(command.value, payload), kwargs={},
             options={},
         ))
+        log.debug('Appending msg[{}] to queued_messages'.format(msg))
         self.queue_messages[queue_id].append(msg)
 
     def __extract_queue_id(self, queue: Union[str, int]) -> str:

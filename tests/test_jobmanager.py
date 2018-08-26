@@ -12,11 +12,18 @@ class MockBroker():
     pass
 
 
+def build_async_mock_results(result):
+    async def mock_deploy_results(timeout):
+        return result
+    return mock_deploy_results
+
+
 @pytest.fixture
 def stub_broker(mocker):
     o = MockBroker()
     o.send_to_queue = mocker.Mock()
     o.broadcast = mocker.Mock()
+    o.clear_queue_messages = mocker.Mock()
     o.queue_ids = []
     return o
 
@@ -44,7 +51,7 @@ async def test_submit_model_not_deployed(stub_broker):
     jobmanager = JobManager(ctx, stub_broker, [model], configs)
 
     with pytest.raises(AssertionError):
-        jobmanager.submit()
+        await jobmanager.submit()
 
 
 @pytest.mark.asyncio
@@ -75,14 +82,16 @@ async def test_deploy_single_model_single_conf(mocker, stub_broker):
                   functions=[])
 
     stub_broker.queue_ids = ['queue1']
-    stub_broker.get_all_results = mocker.Mock(
-        return_value={'queue1': ['model_deployed']})
+
+    stub_broker.get_all_results = build_async_mock_results(
+        {'queue1': ['model_deployed']})
     configs = [{'test': 'deploy_single_model_multi_conf'}]
 
     jobmanager = JobManager(ctx, stub_broker, [model], configs)
     await jobmanager.deploy_model()
 
-    stub_broker.broadcast.assert_called_with(WorkerCommand.DeployModel, model.to_dict())
+    stub_broker.broadcast.assert_called_with(
+        WorkerCommand.DeployModel, model.to_dict())
     assert jobmanager.models_deployed is True
 
 
@@ -97,15 +106,17 @@ async def test_deploy_single_model_single_conf_failed_missing_response(mocker, s
                   functions=[])
 
     stub_broker.queue_ids = ['queue1', 'queue2']
-    stub_broker.get_all_results = mocker.Mock(
-        return_value={'queue1': ['model_deployed']})
+
+    stub_broker.get_all_results = build_async_mock_results(
+        {'queue1': ['model_deployed']})
     configs = [{'test': 'deploy_single_model_multi_conf'}]
 
     jobmanager = JobManager(ctx, stub_broker, [model], configs)
     with pytest.raises(AssertionError):
         await jobmanager.deploy_model()
 
-    stub_broker.broadcast.assert_called_with(WorkerCommand.DeployModel, model.to_dict())
+    stub_broker.broadcast.assert_called_with(
+        WorkerCommand.DeployModel, model.to_dict())
     assert jobmanager.models_deployed is False
 
 
@@ -120,8 +131,9 @@ async def test_deploy_single_model_single_conf_failed_with_error(mocker, stub_br
                   functions=[])
 
     stub_broker.queue_ids = ['queue1', 'queue2']
-    stub_broker.get_all_results = mocker.Mock(
-        return_value={'queue1': ['model_deployed'], 'queue2': ['lol, error']})
+
+    stub_broker.get_all_results = build_async_mock_results(
+        {'queue1': ['model_deployed'], 'queue2': ['lol, error']})
     configs = [{'test': 'deploy_single_model_multi_conf'}]
 
     jobmanager = JobManager(ctx, stub_broker, [model], configs)
@@ -147,8 +159,9 @@ async def test_deploy_single_model_multi_conf(mocker, stub_broker):
                {'test': 'deploy_single_model_multi_conf'}]
 
     stub_broker.queue_ids = ['queue1', 'queue2']
-    stub_broker.get_all_results = mocker.Mock(
-        return_value={'queue1': ['model_deployed'], 'queue2': ['model_deployed']})
+
+    stub_broker.get_all_results = build_async_mock_results(
+        {'queue1': ['model_deployed'], 'queue2': ['model_deployed']})
 
     jobmanager = JobManager(ctx, stub_broker, [model], configs)
     await jobmanager.deploy_model()
@@ -175,18 +188,18 @@ async def test_deploy_multi_model_single_conf(mocker, stub_broker):
                    opt_globals=None,
                    functions=[])
 
-    configs = [{'test': 'deploy_multi_model_single_conf'}]
+    configs = [{'test': 'deploy_single_model_multi_conf'}]
 
     stub_broker.queue_ids = ['queue1', 'queue2']
-    stub_broker.get_all_results = mocker.Mock(
-        return_value={'queue1': ['model_deployed'], 'queue2': ['model_deployed']})
+    stub_broker.get_all_results = build_async_mock_results(
+        {'queue1': ['model_deployed'], 'queue2': ['model_deployed']})
 
     jobmanager = JobManager(ctx, stub_broker, [model, model2], configs)
     await jobmanager.deploy_model()
 
     stub_broker.send_to_queue.assert_has_calls([
-        call('queue1', WorkerCommand.DeployModel, model),
-        call('queue2', WorkerCommand.DeployModel, model2)])
+        call('queue1', WorkerCommand.DeployModel, model.to_dict()),
+        call('queue2', WorkerCommand.DeployModel, model2.to_dict())])
     assert jobmanager.models_deployed is True
 
 
@@ -207,18 +220,19 @@ async def test_deploy_multi_model_multi_conf(mocker, stub_broker):
                    opt_globals=None,
                    functions=[])
 
-    configs = [{'test': 'deploy_single_model_multi_conf'}]
+    configs = [{'test': 'deploy_single_model_multi_conf'},
+               {'test2': 'deploy_single_model_multi_conf_2'}]
 
     stub_broker.queue_ids = ['queue1', 'queue2']
-    stub_broker.get_all_results = mocker.Mock(
-        return_value={'queue1': ['model_deployed'], 'queue2': ['model_deployed']})
+    stub_broker.get_all_results = build_async_mock_results(
+        {'queue1': ['model_deployed'], 'queue2': ['model_deployed']})
 
     jobmanager = JobManager(ctx, stub_broker, [model, model2], configs)
     await jobmanager.deploy_model()
 
     stub_broker.send_to_queue.assert_has_calls([
-        call('queue1', WorkerCommand.DeployModel, model),
-        call('queue2', WorkerCommand.DeployModel, model2)])
+        call('queue1', WorkerCommand.DeployModel, model.to_dict()),
+        call('queue2', WorkerCommand.DeployModel, model2.to_dict())])
     assert jobmanager.models_deployed is True
 
 
@@ -238,7 +252,7 @@ async def test_job_single_model_single_conf(stub_broker, mocker):
     jobmanager = JobManager(ctx, stub_broker, models, configs)
     jobmanager.models_deployed = True
 
-    jobs = jobmanager.submit()
+    jobs = await jobmanager.submit()
     assert len(jobs) == 1
 
     stub_broker.broadcast.assert_called()
@@ -271,7 +285,7 @@ async def test_job_multi_model_single_conf(stub_broker, mocker):
     jobmanager = JobManager(ctx, stub_broker, models, configs)
     jobmanager.models_deployed = True
 
-    jobmanager.submit()
+    await jobmanager.submit()
     assert stub_broker.send_to_queue.call_count == 2
 
     jobs = stub_broker.send_to_queue.call_args_list
@@ -304,7 +318,7 @@ async def test_job_single_model_multi_conf(stub_broker, mocker):
     jobmanager = JobManager(ctx, stub_broker, models, configs)
     jobmanager.models_deployed = True
 
-    jobmanager.submit()
+    await jobmanager.submit()
     assert stub_broker.send_to_queue.call_count == 2
 
     jobs = stub_broker.send_to_queue.call_args_list
@@ -343,7 +357,7 @@ async def test_job_multi_model_multi_conf(stub_broker, mocker):
     jobmanager = JobManager(ctx, stub_broker, models, configs)
     jobmanager.models_deployed = True
 
-    jobmanager.submit()
+    await jobmanager.submit()
     assert stub_broker.send_to_queue.call_count == 2
 
     jobs = stub_broker.send_to_queue.call_args_list

@@ -38,15 +38,26 @@ class JobManager():
             self.queue_models_deployed: Dict[str, bool] = {
                 queue_id: False for queue_id in self.broker.queue_ids}
 
-    def wait_for_worker_join(self):
+    async def wait_for_worker_join(self, is_retry=False):
         joined_workers = []
         for queue_id in self.broker.queue_ids:
-            if self.broker.ping(queue_id) is True:
-                joined_workers.append(queue_id)
-            else:
-                raise AssertionError(
-                    'Worker {} failed to join'.format(queue_id))
+            try:
+                if self.broker.ping(queue_id) is True:
+                    joined_workers.append(queue_id)
+                else:
+                    raise AssertionError(
+                        'Worker {} failed to join'.format(queue_id))
+            except Exception as e:
+                if is_retry:
+                    log.exception(
+                        'Exception occurred while waiting for workers to join')
+                    raise e
 
+                log.warn('Retrying to contact broker in order to ping workers')
+                await asyncio.sleep(3)
+                await self.wait_for_worker_join(is_retry=True)
+
+        self.broker.clear_queue_messages()
         return joined_workers
 
     def _get_execution_type(self, models: List[Model], configs: List[ConfigTree]) -> ExecutionType:
@@ -74,7 +85,7 @@ class JobManager():
             raise AssertionError('Could not determine Exec Type for len(models) == {} and len(configs) == {}'.format(
                                  len_models, len_configs))
 
-    async def deploy_model(self):
+    async def deploy_model(self) -> None:
         if self.execution_type is ExecutionType.SingleModelSingleConf:
             self.broker.broadcast(WorkerCommand.DeployModel,
                                   self.models[0].to_dict())
@@ -86,9 +97,9 @@ class JobManager():
                 log.debug(
                     'Deploying model to queue {} with id {}'.format(n, queue_id))
                 self.broker.send_to_queue(
-                    queue_id, WorkerCommand.DeployModel, self.models[n])
+                    queue_id, WorkerCommand.DeployModel, self.models[n].to_dict())
 
-        results = self.broker.get_all_results(10000)
+        results = await self.broker.get_all_results(timeout=10)
         for queue_id, results in results.items():
             for message in results:
                 if message == 'model_deployed':
@@ -104,8 +115,9 @@ class JobManager():
         log.debug('queue.models_deployed() finished')
 
         self.models_deployed = True
+        self.broker.clear_queue_messages()
 
-    def submit(self) -> List[Job]:
+    async def submit(self) -> List[Job]:
         if not self.models_deployed:
             raise AssertionError(
                 'Trying to submit job without deploying model')
@@ -146,9 +158,12 @@ class JobManager():
             raise AssertionError(
                 'wait_for_results called but no jobs submitted')
 
-        results = self.broker.get_all_results()
+        results = await self.broker.get_all_results(timeout=50.0)
         for job in self.jobs:
             for queue_id in job.submitted_to:
                 for message in results[queue_id]:
-                    job.values.append(message['value'])
-                    job.results.append(message['state'])
+                    if message.get('failure') is not None:
+                        job.failure = message.get('failure')
+                    else:
+                        job.values.append(message['values'])
+                        job.results.append(message['states'])

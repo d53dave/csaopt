@@ -18,6 +18,8 @@ try:
                         ['examples/langermann/langermann_opt.conf'], ctx)
 
         runner.run()
+        if len(runner.failures) > 0:
+            raise Exception('Runner had failures: %s' % runner.failures)
 
 
 except Exception:
