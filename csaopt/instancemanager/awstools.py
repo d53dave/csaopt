@@ -57,7 +57,7 @@ class AWSTools(InstanceManager):
         self.broker: Any = None
         self.security_group_prefix: str = internal_conf.get(
             'cloud.aws.security_group_prefix', 'csaopt_')
-        self.security_group_id: str = None
+        self.security_group_id: str = ''
 
         self.worker_count: int = config['cloud.aws.worker_count']
 
@@ -157,13 +157,14 @@ class AWSTools(InstanceManager):
         self.console_printer.println('Instances Are Up')
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
+    def __exit__(self, exc_type, exc_value, traceback):
         """On exit, AWSTools terminates the started instances and removes security groups"""
         self._terminate_instances(self.timeout_ms)
         for instance in self.workers:
             instance.wait_until_terminated()
         self.broker.wait_until_terminated()
         self._remove_sec_group(self.security_group_id)
+        return False
 
     def _remove_sec_group(self, group_id: str) -> None:
         """Removes the security group created by CSAOpt"""
@@ -209,4 +210,4 @@ class AWSTools(InstanceManager):
             return security_group_id
         except ClientError as e:
             logger.error('Could not create Security Group: {}', e)
-            return None
+            raise

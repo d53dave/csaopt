@@ -3,7 +3,6 @@ channels:
   - conda-forge
 dependencies:
   - python=3.6.4
-  - boto3
   - msgpack-python
   - arrow
   - click
@@ -24,6 +23,7 @@ dependencies:
     - msgpack-numpy
     - sortedcontainers
     - dramatiq[redis, watch]
+    - boto3=1.7.84
     - moto
     - async-timeout
     - apscheduler
@@ -32,3 +32,4 @@ dependencies:
     - pyhocon
     - mypy
     - sphinxcontrib-napoleon
+    - yapf

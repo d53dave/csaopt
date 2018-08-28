@@ -21,8 +21,8 @@ def conf():
             cloud {
                 aws {
                     region = eu-central-1
-                    secret_key = a123456
-                    access_key = b123456
+                    secret_key = HQefGxVMHFnKDb7E9SWHlG9RqXFiWHkku2quV8jb
+                    access_key = AKXBREA5T5XLSQWEXB4KQ
                     worker_count = 2
                     timeout = 500
                 }

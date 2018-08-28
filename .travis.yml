@@ -3,7 +3,8 @@ language: generic
 matrix:
   include:
     - os: linux
-      dist: trusty
+      dist: trusty  # This and sudo: required implicitly adds docker
+      sudo: required
     - os: osx
 
 env:
@@ -28,8 +29,10 @@ before_script:
   - conda info -a
   - conda env create --name csaopt-travisci
   - source activate csaopt-travisci
+  - if [[ $TRAVIS_OS_NAME == "linux" ]]; then
+        pip install docker-py;  # Required to run local runner tests, run only on linux
+    fi
   - ./cc-test-reporter before-build
-  # not yet needed: - python setup.py install
 
 script: py.test --cov=csaopt -v tests
 

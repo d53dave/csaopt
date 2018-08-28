@@ -15,7 +15,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.job import Job as ApJob
 from asyncio.selector_events import BaseSelectorEventLoop
 from typing import Dict, Optional, List, Any
-from sty import fg, ef, rs
+from sty import fg, ef, rs, Rule, Render
 from datetime import datetime, timedelta
 from async_timeout import timeout
 
@@ -29,7 +29,7 @@ from .jobs.jobmanager import Job, JobManager, ExecutionType
 from .broker import Broker
 
 logger = logging.getLogger('csaopt.Runner')
-fg.set('csaopt_magenta', 'rgb', (199, 51, 147))
+fg.set_rule('csaopt_magenta', Rule(Render.rgb_fg, 199, 51, 147))
 
 
 class ConsolePrinter:
