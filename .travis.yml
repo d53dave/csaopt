@@ -3,8 +3,8 @@ language: generic
 matrix:
   include:
     - os: linux
-      dist: trusty  # This and sudo: required implicitly adds docker
-      sudo: required
+      dist: trusty  # This and sudo: true implicitly adds docker
+      sudo: true
     - os: osx
 
 env:
@@ -12,7 +12,8 @@ env:
     - CC_TEST_REPORTER_ID=57a2d5465c28a2de7f343c5c859259b2d5b473a6fee413edd1f4503dc911fe38
 
 before_script:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+  - |
+    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       curl -L https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh > miniconda.sh;
       curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-darwin-amd64 > cc-test-reporter;
     else
@@ -29,7 +30,8 @@ before_script:
   - conda info -a
   - conda env create --name csaopt-travisci
   - source activate csaopt-travisci
-  - if [[ $TRAVIS_OS_NAME == "linux" ]]; then
+  - |
+    if [[ $TRAVIS_OS_NAME == "linux" ]]; then
         pip install docker-py;  # Required to run local runner tests, run only on linux
     fi
   - ./cc-test-reporter before-build
@@ -38,9 +40,12 @@ script: py.test --cov=csaopt -v tests
 
 after_script:
   - coverage xml
-  - if [[ "$TRAVIS_PULL_REQUEST" == "false" && $TRAVIS_OS_NAME == "linux" ]]; then ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT; fi
+  - |
+    if [[ "$TRAVIS_PULL_REQUEST" == "false" && $TRAVIS_OS_NAME == "linux" ]]; then ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT; 
+    fi
 
 after_success:
-  - if [[ $TRAVIS_OS_NAME == "linux" ]]; then
+  - |
+    if [[ $TRAVIS_OS_NAME == "linux" ]]; then
         coveralls;
     fi
