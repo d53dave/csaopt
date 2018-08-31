@@ -9,18 +9,17 @@ try:
         def __init__(self):
             self.obj = {}
 
+    # @pytest.mark.skip(reason='Worker image is not yet available on docker hub')
     def test_runner_langermann():
         internal_conf = get_configs('csaopt/internal/csaopt-internal.conf')
         ctx = {}
         ctx['internal_conf'] = internal_conf
 
-        runner = Runner(['examples/langermann/langermann_opt.py'],
-                        ['examples/langermann/langermann_opt.conf'], ctx)
+        runner = Runner(['examples/langermann/langermann_opt.py'], ['examples/langermann/langermann_opt.conf'], ctx)
 
         runner.run()
         if len(runner.failures) > 0:
             raise Exception('Runner had failures: %s' % runner.failures)
-
 
 except Exception:
     pass
