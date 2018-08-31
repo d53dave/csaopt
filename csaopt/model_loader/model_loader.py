@@ -3,6 +3,7 @@ import logging
 import inspect
 
 from types import ModuleType
+from pyhocon import ConfigTree
 from typing import Dict, List, Callable, Any
 
 from . import ValidationError
@@ -14,15 +15,26 @@ logger = logging.getLogger(__name__)
 
 
 class ModelLoader():
-    def __init__(self, conf, internal_conf, validator=ModelValidator()) -> None:
+    """Class responsible for loading the provided optimization model into the internal representation of a model.
+
+    The input model is loaded as a python module. After validation, each function's source code is extracted and
+    packed into a :class:`model.Model` object.
+
+    Args:
+        conf: Configuration of optimization run
+        internal_conf: Internal CSAOpt Configuration
+        validator: Instance of ModelValidator that should be used for validation
+    """
+
+    def __init__(self, conf: ConfigTree, internal_conf: ConfigTree, validator=ModelValidator()) -> None:
         self.model_path = conf['model.path']
 
         model_name = conf.get('model.name', 'optimization_' + random_str(8))
-        self.model_module: ModuleType = self._create_module(model_name,
-                                                            self.model_path)
-        self.model: Model = None
-        self.globals_token = internal_conf.get(
-            'model.validation.globals_token', '# -- Globals')
+
+        # TODO: interpreting arbitrary code is a bad idea. This should, in the least,
+        # do one pass of validation, maybe checking for forbidden keywords.
+        self.model_module: ModuleType = self._create_module(model_name, self.model_path)
+        self.globals_token = internal_conf.get('model.validation.globals_token', '# -- Globals')
 
         functions: Dict[str, Callable] = self._extract_functions(self.model_module)
         opt_globals = self._extract_globals(self.model_path)
@@ -50,18 +62,38 @@ class ModelLoader():
                 return '\n'.join(model_source_lines[begin + 1:end])
         return ''
 
-    def _create_model(self, name: str, module: Any, opt_globals: str, functions: Dict[str, Callable]) -> Model:
-        return Model(name,
-                     module.dimensions(),
-                     module.precision(),
-                     module.distribution(),
-                     opt_globals,
-                     # The model is prepared for sending it to the workers
-                     # and contains raw source instead of the real python functions
-                     {f_name: inspect.getsource(functions[f_name])
-                      for f_name in functions.keys()})
+    def _create_model(self, name: str, module: ModuleType, opt_globals: str, functions: Dict[str, Callable]) -> Model:
+        """Creates a :class:`model.Model` object containing all relevant information for an optimization run
+
+        Args:
+            name: Name of optimization
+            module: Module containing the optimization functions that were provided by the user
+            opt_globals: Global variables that should be available during optimization
+            functions: Map of function name to function object of all required optimization functions
+
+        Returns:
+            Internal representation of a Model. Ready to be transmitted to the workers.
+        """
+        return Model(
+            name,
+            module.dimensions(),  # type: ignore
+            module.precision(),  # type: ignore
+            module.distribution(),  # type: ignore
+            opt_globals,
+            # The model is prepared for sending it to the workers
+            # and contains raw source instead of the real python functions
+            {f_name: inspect.getsource(functions[f_name])
+             for f_name in functions.keys()})
 
     def _extract_functions(self, module: ModuleType) -> Dict[str, Callable]:
+        """Extracts required functions from the intermediate python module
+
+        Args:
+            module: Module into which the provided optimization functions were interpreted into
+
+        Returns:
+            Dictionary of function name to function object of all required functions
+        """
         functions: Dict[str, Callable] = {}
 
         for func in RequiredFunctions:
@@ -73,6 +105,9 @@ class ModelLoader():
         return self.model
 
     def _create_module(self, name: str, file: str) -> ModuleType:
+        """Interprets the source of a given file into 
+
+        """
         module = imp.load_source(name, file)
 
         if module is None:
