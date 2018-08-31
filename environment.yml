@@ -23,7 +23,7 @@ dependencies:
     - msgpack-numpy
     - sortedcontainers
     - dramatiq[redis, watch]
-    - boto3=1.7.84
+    - boto3==1.7.84
     - moto
     - async-timeout
     - apscheduler
