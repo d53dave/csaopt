@@ -8,7 +8,9 @@ import sys
 import subprocess
 import unicodedata
 import re
-import json
+import os
+import time
+import pathlib
 
 from pyhocon import ConfigTree
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -57,8 +59,7 @@ class ConsolePrinter:
             if columns < max_columns:
                 self.columns = columns
         except:
-            logger.debug(
-                'Could not get stty size, it seems there is no console available.')
+            logger.debug('Could not get stty size, it seems there is no console available.')
 
     @staticmethod
     def _format_to_width(width: int, txt: str, status: str) -> str:
@@ -110,26 +111,23 @@ class ConsolePrinter:
                 self.print_job.pause()
                 self.print_job.remove()
             self.scheduler.remove_all_jobs()
-            self.println(ConsolePrinter._format_to_width(
-                self.columns,
-                self.last_line[0:self.columns -
-                               len(ConsolePrinter.status_done)],
-                fg.green + ConsolePrinter.status_done))
+            self.println(
+                ConsolePrinter._format_to_width(self.columns,
+                                                self.last_line[0:self.columns - len(ConsolePrinter.status_done)],
+                                                fg.green + ConsolePrinter.status_done))
 
     def spinner_failure(self) -> None:
         # If log level < warn, just re-print with 'Failed.'
         # Truncate to console width to fit message
         if self.log_level == 'info':
             self.scheduler.remove_all_jobs()
-            self.println(ConsolePrinter._format_to_width(
-                self.columns,
-                self.last_line[0:self.columns -
-                               len(ConsolePrinter.status_failed)],
-                fg.red + ConsolePrinter.status_failed))
+            self.println(
+                ConsolePrinter._format_to_width(self.columns,
+                                                self.last_line[0:self.columns - len(ConsolePrinter.status_failed)],
+                                                fg.red + ConsolePrinter.status_failed))
 
 
 class Runner:
-
     def __init__(self, model_paths: List[str], conf_paths: List[str], invocation_options: Dict[str, Any]) -> None:
         internal_conf = invocation_options['internal_conf']
 
@@ -141,8 +139,7 @@ class Runner:
         self.models: List[Model] = []
         self.failures: List[str] = []
 
-        self.console_printer.print_magenta(
-            ef.bold + 'Welcome to CSAOpt v{}\n\n'.format(__version__))
+        self.console_printer.print_magenta(ef.bold + 'Welcome to CSAOpt v{}\n\n'.format(__version__))
 
     def _get_instance_manager(self, context, conf, internal_conf) -> InstanceManager:
         if conf['cloud.disabled'] is True:
@@ -152,10 +149,9 @@ class Runner:
         if cloud_platform == 'aws':
             return AWSTools(context, conf, internal_conf)
         # elif cloud_platform == 'gcp' etc...
-            # return GCPTools()
+        # return GCPTools()
         else:
-            raise AttributeError('Cloud platform ' +
-                                 cloud_platform + ' unrecognized.')
+            raise AttributeError('Cloud platform ' + cloud_platform + ' unrecognized.')
 
     def duplicate_cloud_configs(self, configs):
         # TODO this needs to be clearly stated in documentation
@@ -200,15 +196,13 @@ class Runner:
         if self.cloud_config['cloud.disabled'] is True:
             start_msg = 'Starting local instances with docker'
         else:
-            start_msg = 'Starting instances on {}'.format(
-                self.cloud_config['cloud.platform'].upper())
+            start_msg = 'Starting instances on {}'.format(self.cloud_config['cloud.platform'].upper())
 
         printer.print_with_spinner(start_msg)
 
         with self._get_instance_manager(ctx, self.cloud_config, internal_conf) as instancemanager:
             printer.spinner_success()
-            printer.print_with_spinner(
-                'Waiting for broker to come online')
+            printer.print_with_spinner('Waiting for broker to come online')
 
             broker_instance, workers = instancemanager.get_running_instances()
 
@@ -217,8 +211,7 @@ class Runner:
                 if 'queue_id' in worker.props:
                     queue_ids.append(worker.props['queue_id'])
 
-            assert len(
-                queue_ids) > 0, 'There should be at least one worker running'
+            assert len(queue_ids) > 0, 'There should be at least one worker running'
             async with timeout(30) as async_timeout:
                 broker: Broker = Broker(
                     host=str(broker_instance.public_ip), port=broker_instance.port, queue_ids=queue_ids)
@@ -226,14 +219,12 @@ class Runner:
 
             if async_timeout.expired:
                 printer.spinner_failure()
-                raise TimeoutError(
-                    'Timed out waiting for broker to come online')
+                raise TimeoutError('Timed out waiting for broker to come online')
 
             jobmanager = JobManager(ctx, broker, self.models, configs)
 
             for worker_id in (await jobmanager.wait_for_worker_join()):
-                printer.println(
-                    'Worker {} joined'.format(worker_id))
+                printer.println('Worker {} joined'.format(worker_id))
 
             printer.print_with_spinner('Deploying model')
             try:
@@ -249,8 +240,7 @@ class Runner:
 
             await asyncio.sleep(0.8)
 
-            printer.print_with_spinner(
-                'Running Simulated Annealing')
+            printer.print_with_spinner('Running Simulated Annealing')
 
             await asyncio.sleep(1)
             # TODO: this needs timeouts
@@ -263,20 +253,26 @@ class Runner:
             printer.spinner_success()
 
             printer.print_with_spinner('Scanning for best result')
-            # TODO: determine which worker reported this result
-            len(jobs)
+
+            best_job, best_value, best_state = jobmanager.scan_for_best_result(jobs)
             printer.spinner_success()
 
-            # printer.println('Evaluated: {} State: {}'.format(val_min, best_res))
+            printer.println('Evaluated: {} State: {}'.format(best_value, best_state))
 
-            # if configs[0]['TODO']:
-            #     printer.print_with_spinner('Saving best result to file: TODO')
-            #     try:
-            #         job.write_files()
-            #         printer.spinner_success()
-            #     except Exception as e:
-            #         self.failures.append('Could not write to file: {}'.format(e))
-            #         printer.spinner_failure()
+            for index, job in enumerate(jobs):
+                config = configs[0] if len(configs) == 1 else configs[index]
+                save_to_file = config.get('save_to_file.type', 'none')
+                base_path = config.get('save_to_file.path', os.path.dirname(os.path.realpath(__file__)))
+                conf_name = config.get('name', ('optimization_' + str(int(time.time()))))
+                path = os.path.join(base_path, conf_name)
+
+                pathlib.Path(base_path, conf_name).mkdir(parents=True, exist_ok=True)
+
+                binary = config.get('save_to_file.binary', False)
+                if save_to_file == 'all':
+                    job.write_files(path, binary)
+                elif save_to_file == 'best':
+                    job.write_files(path, binary, only_best=True)
 
     def run(self) -> None:
         """
@@ -288,8 +284,7 @@ class Runner:
         loop.close()
 
         if self.failures:
-            self.console_printer.println(
-                fg.red + 'It seems there have been errors. 🌩')
+            self.console_printer.println(fg.red + 'It seems there have been errors. 🌩')
         else:
             self.console_printer.println(fg.green + 'All done. ✨')
 
@@ -298,10 +293,7 @@ class Runner:
 
 
 class Context:
-    def __init__(self,
-                 console_printer: ConsolePrinter,
-                 configs: ConfigTree,
-                 internal_config: ConfigTree) -> None:
+    def __init__(self, console_printer: ConsolePrinter, configs: ConfigTree, internal_config: ConfigTree) -> None:
         self.console_printer: ConsolePrinter = console_printer
         self.configs = configs
         self.internal_config = internal_config

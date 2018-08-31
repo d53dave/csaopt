@@ -1,7 +1,8 @@
 import asyncio
 import logging
+import numpy as np
 
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from pyhocon import ConfigTree
 
 from . import Job, ExecutionType
@@ -21,22 +22,16 @@ class JobManager():
 
     """
 
-    def __init__(self,
-                 ctx,
-                 broker: Broker,
-                 models: List[Model],
-                 configs: List[ConfigTree]) -> None:
+    def __init__(self, ctx, broker: Broker, models: List[Model], configs: List[ConfigTree]) -> None:
 
         self.broker = broker
         self.models_deployed = False
         self.models = models
         self.configs = configs
-        self.execution_type: ExecutionType = self._get_execution_type(
-            models, configs)
+        self.execution_type: ExecutionType = self._get_execution_type(models, configs)
         self.jobs: List[Job] = []
         if self.broker is not None:
-            self.queue_models_deployed: Dict[str, bool] = {
-                queue_id: False for queue_id in self.broker.queue_ids}
+            self.queue_models_deployed: Dict[str, bool] = {queue_id: False for queue_id in self.broker.queue_ids}
 
     async def wait_for_worker_join(self, is_retry=False):
         joined_workers = []
@@ -45,12 +40,10 @@ class JobManager():
                 if self.broker.ping(queue_id) is True:
                     joined_workers.append(queue_id)
                 else:
-                    raise AssertionError(
-                        'Worker {} failed to join'.format(queue_id))
+                    raise AssertionError('Worker {} failed to join'.format(queue_id))
             except Exception as e:
                 if is_retry:
-                    log.exception(
-                        'Exception occurred while waiting for workers to join')
+                    log.exception('Exception occurred while waiting for workers to join')
                     raise e
 
                 log.warn('Retrying to contact broker in order to ping workers')
@@ -71,7 +64,7 @@ class JobManager():
 
         if len_models > 1 and len_configs > 1 and len_configs != len_models:
             raise AssertionError('For len(models) == {}, there should be {} configs, but found {}'.format(
-                                 len_models, len_models, len_configs))
+                len_models, len_models, len_configs))
 
         if len_models == 1 and len_configs == 1:
             return ExecutionType.SingleModelSingleConf
@@ -83,21 +76,17 @@ class JobManager():
             return ExecutionType.MultiModelMultiConf
         else:
             raise AssertionError('Could not determine Exec Type for len(models) == {} and len(configs) == {}'.format(
-                                 len_models, len_configs))
+                len_models, len_configs))
 
     async def deploy_model(self) -> None:
         if self.execution_type is ExecutionType.SingleModelSingleConf:
-            self.broker.broadcast(WorkerCommand.DeployModel,
-                                  self.models[0].to_dict())
+            self.broker.broadcast(WorkerCommand.DeployModel, self.models[0].to_dict())
         elif self.execution_type is ExecutionType.SingleModelMultiConf:
-            self.broker.broadcast(WorkerCommand.DeployModel,
-                                  self.models[0].to_dict())
+            self.broker.broadcast(WorkerCommand.DeployModel, self.models[0].to_dict())
         else:
             for n, queue_id in enumerate(self.broker.queue_ids):
-                log.debug(
-                    'Deploying model to queue {} with id {}'.format(n, queue_id))
-                self.broker.send_to_queue(
-                    queue_id, WorkerCommand.DeployModel, self.models[n].to_dict())
+                log.debug('Deploying model to queue {} with id {}'.format(n, queue_id))
+                self.broker.send_to_queue(queue_id, WorkerCommand.DeployModel, self.models[n].to_dict())
 
         results = await self.broker.get_all_results(timeout=10)
         for queue_id, results in results.items():
@@ -105,8 +94,7 @@ class JobManager():
                 if message == 'model_deployed':
                     self.queue_models_deployed[queue_id] = True
                 else:
-                    log.warn(
-                        'Worker on Queue %s didn\'nt successfully deploy model: "%s"', queue_id, message)
+                    log.warn('Worker on Queue %s didn\'nt successfully deploy model: "%s"', queue_id, message)
                     log.warn('Results: ' + repr(results))
 
         assert not any((not model_deployed for queue_id, model_deployed in self.queue_models_deployed.items())), \
@@ -119,8 +107,7 @@ class JobManager():
 
     async def submit(self) -> List[Job]:
         if not self.models_deployed:
-            raise AssertionError(
-                'Trying to submit job without deploying model')
+            raise AssertionError('Trying to submit job without deploying model')
 
         cmd = WorkerCommand.RunOptimization
 
@@ -152,18 +139,34 @@ class JobManager():
 
     async def wait_for_results(self) -> None:
         if not self.models_deployed:
-            raise AssertionError(
-                'wait_for_results called but no models are deployed')
+            raise AssertionError('wait_for_results called but no models are deployed')
         if len(self.jobs) == 0:
-            raise AssertionError(
-                'wait_for_results called but no jobs submitted')
+            raise AssertionError('wait_for_results called but no jobs submitted')
 
         results = await self.broker.get_all_results(timeout=50.0)
         for job in self.jobs:
             for queue_id in job.submitted_to:
                 for message in results[queue_id]:
+                    log.warn('Processing message on queue {}, result={}'.format(queue_id, message))
                     if message.get('failure') is not None:
                         job.failure = message.get('failure')
                     else:
-                        job.values.append(message['values'])
-                        job.results.append(message['states'])
+                        job.values = message['values']
+                        job.results = message['states']
+
+    def scan_for_best_result(self, jobs: List[Job]) -> Tuple[Job, float, np.ndarray]:
+        if len(jobs) < 1:
+            raise AssertionError('Cannot scan for best result on empty jobs list')
+
+        best_job = jobs[0]
+        best_value, best_state = best_job.get_best_results()
+
+        for job in jobs[1:]:
+            value, state = job.get_best_results()
+
+            if value < best_value:
+                best_value = value
+                best_state = state
+                best_job = job
+
+        return best_job, best_value, best_state
