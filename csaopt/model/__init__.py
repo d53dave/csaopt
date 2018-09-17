@@ -72,15 +72,16 @@ class Model:
         precision: Precision = d['precision']
 
         return Model(d['name'], d['dimensions'], precision.value, distribution.value, d.get('globals', {}),
-                     d['functions'])
+                     d.get('state_shape', 1), d['functions'])
 
     def __init__(self, name: str, dimensions: int, precision: Precision, distribution: RandomDistribution,
-                 opt_globals: str, functions: Dict[str, str]) -> None:
+                 opt_globals: str, state_shape: int, functions: Dict[str, str]) -> None:
         self.name: str = name
         self.dimensions: int = dimensions
         self.distribution: RandomDistribution = distribution
         self.precision: Precision = precision
         self.globals: str = opt_globals
+        self.state_shape: int = state_shape
         self.functions: Dict[str, str] = functions
 
     def to_dict(self) -> Dict[str, Any]:
@@ -95,6 +96,7 @@ class Model:
             'distribution': self.distribution.value,
             'precision': self.precision.value,
             'globals': self.globals,
+            'state_shape': self.state_shape,
             'functions': self.functions
         }
 
