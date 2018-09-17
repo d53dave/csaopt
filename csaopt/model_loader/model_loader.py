@@ -4,7 +4,7 @@ import inspect
 
 from types import ModuleType
 from pyhocon import ConfigTree
-from typing import Dict, List, Callable, Any
+from typing import Dict, List, Callable, Any, Optional
 
 from . import ValidationError
 from .model_validator import ModelValidator
@@ -54,6 +54,10 @@ class ModelLoader():
             logger.error('Validation failed for model `{}`: {}'.format(self.model_path, self.errors))
 
     def _extract_globals(self, model_path: str) -> str:
+        """Extracts the globals section from a model file
+
+        Model files may have a globals section that will be carried over to the worker machines. This will be extracted here.
+        """
         with open(model_path, 'r') as model_file:
             model_source_lines = model_file.read().splitlines()
             token_idxs = [idx for idx, line in enumerate(model_source_lines) if self.globals_token in line]
@@ -80,6 +84,7 @@ class ModelLoader():
             module.precision(),  # type: ignore
             module.distribution(),  # type: ignore
             opt_globals,
+            len(module.empty_state()),  # type: ignore
             # The model is prepared for sending it to the workers
             # and contains raw source instead of the real python functions
             {f_name: inspect.getsource(functions[f_name])
@@ -101,12 +106,21 @@ class ModelLoader():
 
         return functions
 
-    def get_model(self) -> Model:
-        return self.model
+    def get_model(self) -> Optional[Model]:
+        try:
+            return self.model
+        except AttributeError:
+            return None
 
     def _create_module(self, name: str, file: str) -> ModuleType:
-        """Interprets the source of a given file into 
+        """Interprets a given file into a python module
 
+        Args:
+            name: Name of module to be created
+            file: Path to file
+
+        Returns:
+            Python module that contains the interpreted code of the input file
         """
         module = imp.load_source(name, file)
 
