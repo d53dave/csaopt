@@ -14,7 +14,7 @@ def internal_conf():
 def conf():
     return ConfigFactory.parse_string("""
         {
-            cloud {
+            remote {
                 aws {
                     region = eu-central-1
                     secret_key = a123456

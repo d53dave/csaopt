@@ -18,7 +18,7 @@ def internal_conf():
 def conf():
     return ConfigFactory.parse_string("""
         {
-            cloud {
+            remote {
                 aws {
                     region = eu-central-1
                     secret_key = HQefGxVMHFnKDb7E9SWHlG9RqXFiWHkku2quV8jb
@@ -46,9 +46,9 @@ def awstools(context):
 
 
 def test_loads_userdata(awstools):
-    assert awstools.user_data_scripts['queue'] is not None
+    assert awstools.user_data_scripts['broker'] is not None
     assert awstools.user_data_scripts['worker'] is not None
-    assert len(awstools.user_data_scripts['queue']) > 0
+    assert len(awstools.user_data_scripts['broker']) > 0
     assert len(awstools.user_data_scripts['worker']) > 0
 
 
@@ -78,15 +78,15 @@ def test_remote_security_group(awstools):
 def test_start_instances(awstools):
     with mock_ec2():
         awstools.security_group_id = 'test_sec_group'
-        queue, workers = awstools._provision_instances(timeout_ms=100, count=2)
+        broker, workers = awstools._provision_instances(timeout_ms=100, count=2, **awstools.provision_args)
 
         assert len(workers) == 2
-        assert queue is not None
+        assert broker is not None
         assert sum([len(r['Instances']) for r in awstools.ec2_client.describe_instances()['Reservations']]) == 3
 
         assert awstools.ec2_client.describe_instance_attribute(
-            Attribute='userData', InstanceId=queue.instance_id)['UserData']['Value'] == base64.b64encode(
-                awstools.user_data_scripts['queue']).decode('ascii')
+            Attribute='userData', InstanceId=broker.instance_id)['UserData']['Value'] == base64.b64encode(
+                awstools.user_data_scripts['broker']).decode('ascii')
         assert awstools.ec2_client.describe_instance_attribute(
             Attribute='userData', InstanceId=workers[0].instance_id)['UserData']['Value'] == base64.b64encode(
                 awstools.user_data_scripts['worker']).decode('ascii')
@@ -98,12 +98,13 @@ def test_start_instances(awstools):
 def test_get_instances(awstools):
     with mock_ec2():
         awstools.security_group_id = 'test_sec_group'
-        awstools.broker, awstools.workers = awstools._provision_instances(timeout_ms=100, count=4)
+        awstools.broker, awstools.workers = awstools._provision_instances(
+            timeout_ms=100, count=4, **awstools.provision_args)
 
-        queue, workers = awstools.get_running_instances()
+        broker, workers = awstools.get_running_instances()
 
         assert len(workers) == 4
-        assert queue is not None
+        assert broker is not None
 
 
 def test_context_manager(context):
@@ -111,11 +112,11 @@ def test_context_manager(context):
         responses.add(responses.GET, 'https://api.ipify.org/', body='192.168.0.1', status=200)
         with AWSTools(context.configs[0], context.internal_config) as awstools:
             worker_instance_ids = [w.id for w in awstools.workers]
-            queue_id = awstools.broker.id
+            broker_id = awstools.broker.id
             assert len(awstools.ec2_client.describe_instances()) == 2
 
         for instance in awstools.ec2_resource.instances.all():
-            if instance.id in worker_instance_ids or instance.id == queue_id:
+            if instance.id in worker_instance_ids or instance.id == broker_id:
                 assert instance.state['Name'] == 'terminated'
 
 

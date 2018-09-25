@@ -38,8 +38,8 @@ class Local(InstanceManager[DockerContainerT]):
 
         self.run_id = run_id = random_str(8)
 
-        self.broker_docker_tag = internal_conf['cloud.local.broker_image']
-        self.worker_docker_tag = internal_conf['cloud.local.worker_image']
+        self.broker_docker_tag = internal_conf['remote.broker_image']
+        self.worker_docker_tag = internal_conf['remote.worker_image']
 
         self.broker_container_name = 'CSAOpt-Broker-' + run_id
         self.worker_container_name = 'CSAOpt-Worker-' + run_id
@@ -51,11 +51,12 @@ class Local(InstanceManager[DockerContainerT]):
             self.broker_docker_tag,
             ports={'6379/tcp': kwargs['HOST_REDIS_PORT']},
             detach=True,
-            # network=self.docker_network.name,
+            network=self.docker_network.name,
             environment={'ALLOW_EMPTY_PASSWORD': 'yes'},
             name=self.broker_container_name)
 
         broker_ip = ''
+        # TODO instead of polling the broker IP, assign it on the custom network
 
         while broker_ip is None or len(broker_ip.strip()) == 0:
             time.sleep(0.3)
@@ -69,7 +70,7 @@ class Local(InstanceManager[DockerContainerT]):
         self.worker = self.docker_client.containers.run(
             self.worker_docker_tag,
             detach=True,
-            # network=self.docker_network.name,
+            network=self.docker_network.name,
             environment=kwargs,
             labels={'queue_id': self.worker_container_name},
             name=self.worker_container_name)

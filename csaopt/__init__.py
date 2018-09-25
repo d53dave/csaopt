@@ -142,35 +142,35 @@ class Runner:
         self.console_printer.print_magenta(ef.bold + 'Welcome to CSAOpt v{}\n\n'.format(__version__))
 
     def _get_instance_manager(self, context, conf, internal_conf) -> InstanceManager:
-        if conf['cloud.disabled'] is True:
+        if conf['remote.local_docker'] is True:
             return Local(conf, internal_conf)
 
-        cloud_platform = conf['cloud.platform']
+        cloud_platform = conf['remote.platform']
         if cloud_platform == 'aws':
-            return AWSTools(context, conf, internal_conf)
+            return AWSTools(conf, internal_conf)
         # elif cloud_platform == 'gcp' etc...
         # return GCPTools()
         else:
             raise AttributeError('Cloud platform ' + cloud_platform + ' unrecognized.')
 
-    def duplicate_cloud_configs(self, configs):
+    def duplicate_remote_configs(self, configs):
         # TODO this needs to be clearly stated in documentation
         for config in configs:
-            if config.get('cloud', None) is not None:
-                cloud_conf = config['cloud']
+            if config.get('remote', None) is not None:
+                remote_conf = config['remote']
                 break
         else:
-            raise AssertionError('No cloud configuration found')
+            raise AssertionError('No remote configuration found')
 
         for config in configs:
-            config['cloud'] = cloud_conf
+            config['remote'] = remote_conf
 
     async def _run_async(self, loop):
         printer = self.console_printer
         printer.print_with_spinner('Loading Config')
         try:
             configs = [get_configs(conf_path) for conf_path in self.conf_paths]
-            self.duplicate_cloud_configs(configs)
+            self.duplicate_remote_configs(configs)
 
             internal_conf = self.invocation_options['internal_conf']
 
@@ -191,16 +191,16 @@ class Runner:
         printer.spinner_success()
 
         # Get cloud config, create instance manager
-        self.cloud_config = configs[0]
+        self.remote_config = configs[0]
 
-        if self.cloud_config['cloud.disabled'] is True:
+        if self.remote_config['remote.local_docker'] is True:
             start_msg = 'Starting local instances with docker'
         else:
-            start_msg = 'Starting instances on {}'.format(self.cloud_config['cloud.platform'].upper())
+            start_msg = 'Starting instances on {}'.format(self.remote_config['remote.platform'].upper())
 
         printer.print_with_spinner(start_msg)
 
-        with self._get_instance_manager(ctx, self.cloud_config, internal_conf) as instancemanager:
+        with self._get_instance_manager(ctx, self.remote_config, internal_conf) as instancemanager:
             printer.spinner_success()
             printer.print_with_spinner('Waiting for broker to come online')
 
@@ -255,6 +255,11 @@ class Runner:
             printer.print_with_spinner('Scanning for best result')
 
             best_job, best_value, best_state = jobmanager.scan_for_best_result(jobs)
+
+            # To improve testability
+            self.best_state = best_state
+            self.best_value = best_value
+
             printer.spinner_success()
 
             printer.println('Evaluated: {} State: {}'.format(best_value, best_state))
