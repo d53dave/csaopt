@@ -30,18 +30,12 @@ curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.li
 sudo apt update && sudo apt-get install nvidia-docker2 -y
 sudo pkill -SIGHUP dockerd
 
-# Docker Images
-sudo docker pull nvidia/cuda:8.0-runtime
-sudo docker pull alpine:3.7
-
 # CUDA
 sudo add-apt-repository ppa:graphics-drivers/ppa
 sudo apt update && sudo apt install nvidia-367
 
 # Test NVidia Driver
 docker run --runtime=nvidia --rm nvidia/cuda nvidia-smi
-# or
-nvidia-docker run --rm -ti ryanolson/device-query
 
 docker pull d53dave/csaopt-worker:latest
 
