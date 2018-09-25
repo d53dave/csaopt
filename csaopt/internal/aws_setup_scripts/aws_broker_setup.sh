@@ -21,5 +21,5 @@ sudo apt update && sudo apt-get install docker-ce docker-compose -y
 sudo usermod -aG docker $USER
 
 # Docker Images
-sudo docker pull redis
+sudo docker pull bitnami/redis
 
