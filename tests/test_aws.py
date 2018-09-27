@@ -54,10 +54,8 @@ def test_loads_userdata(awstools):
 
 def test_create_security_group(awstools):
     with mock_ec2():
-        responses.add(responses.GET, 'https://api.ipify.org/', body='192.168.0.1', status=200)
         groupId = awstools._create_sec_group(name='testsecgroup')
 
-        assert len(responses.calls) == 1
         assert awstools.ec2_resource.SecurityGroup(groupId).group_name == 'testsecgroup'
 
 
@@ -78,21 +76,30 @@ def test_remote_security_group(awstools):
 def test_start_instances(awstools):
     with mock_ec2():
         awstools.security_group_id = 'test_sec_group'
+        awstools.debug_on_cpu = True
+        awstools.broker_port = 4242
+        awstools.broker_password = 'testpassword'
         broker, workers = awstools._provision_instances(timeout_ms=100, count=2, **awstools.provision_args)
 
         assert len(workers) == 2
         assert broker is not None
         assert sum([len(r['Instances']) for r in awstools.ec2_client.describe_instances()['Reservations']]) == 3
 
-        assert awstools.ec2_client.describe_instance_attribute(
-            Attribute='userData', InstanceId=broker.instance_id)['UserData']['Value'] == base64.b64encode(
-                awstools.user_data_scripts['broker']).decode('ascii')
-        assert awstools.ec2_client.describe_instance_attribute(
-            Attribute='userData', InstanceId=workers[0].instance_id)['UserData']['Value'] == base64.b64encode(
-                awstools.user_data_scripts['worker']).decode('ascii')
-        assert awstools.ec2_client.describe_instance_attribute(
-            Attribute='userData', InstanceId=workers[1].instance_id)['UserData']['Value'] == base64.b64encode(
-                awstools.user_data_scripts['worker']).decode('ascii')
+        broker_userdata = base64.b64decode(
+            awstools.ec2_client.describe_instance_attribute(
+                Attribute='userData', InstanceId=broker.instance_id)['UserData']['Value']).decode('ascii')
+
+        assert str(awstools.broker_port) in broker_userdata
+        assert awstools.broker_password in broker_userdata
+
+        worker0_userdata = base64.b64decode(
+            awstools.ec2_client.describe_instance_attribute(
+                Attribute='userData', InstanceId=workers[0].instance_id)['UserData']['Value']).decode('ascii')
+
+        assert 'NUMBA_ENABLE_CUDASIM=1' in worker0_userdata
+        assert str(broker.private_ip_address) in worker0_userdata
+        assert str(awstools.broker_port) in worker0_userdata
+        assert awstools.broker_password in worker0_userdata
 
 
 def test_get_instances(awstools):

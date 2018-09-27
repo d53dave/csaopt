@@ -5,17 +5,18 @@ import subprocess
 from pathlib import Path
 
 
-@pytest.mark.skipif(not os.getenv('CSAOPT_RUN_E2E'),
-                    reason='E2E Tests are disabled by default. Set the CSAOPT_RUN_E2E env variable to enable')
+@pytest.mark.skipif(
+    not os.getenv('CSAOPT_RUN_E2E'),
+    reason='E2E Tests are disabled by default. Set the CSAOPT_RUN_E2E env variable to enable')
 def test_end2end():
     conf_path = Path('tests/e2e/csaopt_e2e.conf').resolve()
     model_path = Path('test/e2e/model/').resolve()
 
     try:
         csaopt_proc = subprocess.Popen(
-                                ['csaopt', '-conf', conf_path.name, '--model', model_path.name],
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+            ['csaopt', '-conf', conf_path.name, '--model', model_path.name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
 
         out, err = csaopt_proc.communicate()
         returncode = csaopt_proc.returncode

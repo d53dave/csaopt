@@ -4,7 +4,7 @@ from mock import call
 from dramatiq import Worker
 from context import JobManager, AppContext, Broker, ExecutionType, Model
 from context import RandomDistribution, Precision, Job, WorkerCommand
-from pyhocon import ConfigTree
+from pyhocon import ConfigTree, ConfigFactory
 from collections import OrderedDict
 
 
@@ -12,9 +12,15 @@ class MockBroker():
     pass
 
 
+@pytest.fixture
+def internal_conf():
+    return ConfigFactory.parse_file('csaopt/internal/csaopt-internal.conf')
+
+
 def build_async_mock_results(result):
     async def mock_deploy_results(timeout):
         return result
+
     return mock_deploy_results
 
 
@@ -37,15 +43,17 @@ def stub_worker(stub_broker):
 
 
 @pytest.mark.asyncio
-async def test_submit_model_not_deployed(stub_broker):
+async def test_submit_model_not_deployed(stub_broker, internal_conf):
     # TODO Remove ExecutionType from AppContext, it's not required
-    ctx = AppContext(None, None, None)
-    model = Model(name='testmodel',
-                  dimensions=3,
-                  precision=Precision.Float32,
-                  distribution=RandomDistribution.Uniform,
-                  opt_globals=None,
-                  functions=[])
+    ctx = AppContext(None, None, internal_conf)
+    model = Model(
+        name='testmodel',
+        dimensions=3,
+        precision=Precision.Float32,
+        distribution=RandomDistribution.Uniform,
+        state_shape=2,
+        opt_globals=None,
+        functions=[])
     configs = [{}]
 
     jobmanager = JobManager(ctx, stub_broker, [model], configs)
@@ -55,14 +63,16 @@ async def test_submit_model_not_deployed(stub_broker):
 
 
 @pytest.mark.asyncio
-async def test_wait_empty_jobs(stub_broker):
-    ctx = AppContext(None, None, None)
-    model = Model(name='testmodel',
-                  dimensions=3,
-                  precision=Precision.Float32,
-                  distribution=RandomDistribution.Uniform,
-                  opt_globals=None,
-                  functions=[])
+async def test_wait_empty_jobs(stub_broker, internal_conf):
+    ctx = AppContext(None, None, internal_conf)
+    model = Model(
+        name='testmodel',
+        dimensions=3,
+        precision=Precision.Float32,
+        distribution=RandomDistribution.Uniform,
+        state_shape=2,
+        opt_globals=None,
+        functions=[])
     configs = [{}]
 
     jobmanager = JobManager(ctx, stub_broker, [model], configs)
@@ -72,179 +82,189 @@ async def test_wait_empty_jobs(stub_broker):
 
 
 @pytest.mark.asyncio
-async def test_deploy_single_model_single_conf(mocker, stub_broker):
-    ctx = AppContext(None, None, None)
-    model = Model(name='testmodel',
-                  dimensions=3,
-                  precision=Precision.Float32,
-                  distribution=RandomDistribution.Uniform,
-                  opt_globals=None,
-                  functions=[])
+async def test_deploy_single_model_single_conf(mocker, stub_broker, internal_conf):
+    ctx = AppContext(None, None, internal_conf)
+    model = Model(
+        name='testmodel',
+        dimensions=3,
+        precision=Precision.Float32,
+        distribution=RandomDistribution.Uniform,
+        state_shape=2,
+        opt_globals=None,
+        functions=[])
 
     stub_broker.queue_ids = ['queue1']
 
-    stub_broker.get_all_results = build_async_mock_results(
-        {'queue1': ['model_deployed']})
+    stub_broker.get_all_results = build_async_mock_results({'queue1': ['model_deployed']})
     configs = [{'test': 'deploy_single_model_multi_conf'}]
 
     jobmanager = JobManager(ctx, stub_broker, [model], configs)
     await jobmanager.deploy_model()
 
-    stub_broker.broadcast.assert_called_with(
-        WorkerCommand.DeployModel, model.to_dict())
+    stub_broker.broadcast.assert_called_with(WorkerCommand.DeployModel, model.to_dict())
     assert jobmanager.models_deployed is True
 
 
 @pytest.mark.asyncio
-async def test_deploy_single_model_single_conf_failed_missing_response(mocker, stub_broker):
-    ctx = AppContext(None, None, None)
-    model = Model(name='testmodel',
-                  dimensions=3,
-                  precision=Precision.Float32,
-                  distribution=RandomDistribution.Uniform,
-                  opt_globals=None,
-                  functions=[])
+async def test_deploy_single_model_single_conf_failed_missing_response(mocker, stub_broker, internal_conf):
+    ctx = AppContext(None, None, internal_conf)
+    model = Model(
+        name='testmodel',
+        dimensions=3,
+        precision=Precision.Float32,
+        distribution=RandomDistribution.Uniform,
+        state_shape=2,
+        opt_globals=None,
+        functions=[])
 
     stub_broker.queue_ids = ['queue1', 'queue2']
 
-    stub_broker.get_all_results = build_async_mock_results(
-        {'queue1': ['model_deployed']})
-    configs = [{'test': 'deploy_single_model_multi_conf'}]
-
-    jobmanager = JobManager(ctx, stub_broker, [model], configs)
-    with pytest.raises(AssertionError):
-        await jobmanager.deploy_model()
-
-    stub_broker.broadcast.assert_called_with(
-        WorkerCommand.DeployModel, model.to_dict())
-    assert jobmanager.models_deployed is False
-
-
-@pytest.mark.asyncio
-async def test_deploy_single_model_single_conf_failed_with_error(mocker, stub_broker):
-    ctx = AppContext(None, None, None)
-    model = Model(name='testmodel',
-                  dimensions=3,
-                  precision=Precision.Float32,
-                  distribution=RandomDistribution.Uniform,
-                  opt_globals=None,
-                  functions=[])
-
-    stub_broker.queue_ids = ['queue1', 'queue2']
-
-    stub_broker.get_all_results = build_async_mock_results(
-        {'queue1': ['model_deployed'], 'queue2': ['lol, error']})
+    stub_broker.get_all_results = build_async_mock_results({'queue1': ['model_deployed']})
     configs = [{'test': 'deploy_single_model_multi_conf'}]
 
     jobmanager = JobManager(ctx, stub_broker, [model], configs)
     with pytest.raises(AssertionError):
         await jobmanager.deploy_model()
 
-    stub_broker.broadcast.assert_called_with(
-        WorkerCommand.DeployModel, model.to_dict())
+    stub_broker.broadcast.assert_called_with(WorkerCommand.DeployModel, model.to_dict())
     assert jobmanager.models_deployed is False
 
 
 @pytest.mark.asyncio
-async def test_deploy_single_model_multi_conf(mocker, stub_broker):
-    ctx = AppContext(None, None, None)
-    model = Model(name='testmodel',
-                  dimensions=3,
-                  precision=Precision.Float32,
-                  distribution=RandomDistribution.Uniform,
-                  opt_globals=None,
-                  functions=[])
-
-    configs = [{'test': 'deploy_single_model_multi_conf'},
-               {'test': 'deploy_single_model_multi_conf'}]
+async def test_deploy_single_model_single_conf_failed_with_error(mocker, stub_broker, internal_conf):
+    ctx = AppContext(None, None, internal_conf)
+    model = Model(
+        name='testmodel',
+        dimensions=3,
+        precision=Precision.Float32,
+        distribution=RandomDistribution.Uniform,
+        state_shape=2,
+        opt_globals=None,
+        functions=[])
 
     stub_broker.queue_ids = ['queue1', 'queue2']
 
-    stub_broker.get_all_results = build_async_mock_results(
-        {'queue1': ['model_deployed'], 'queue2': ['model_deployed']})
+    stub_broker.get_all_results = build_async_mock_results({'queue1': ['model_deployed'], 'queue2': ['lol, error']})
+    configs = [{'test': 'deploy_single_model_multi_conf'}]
+
+    jobmanager = JobManager(ctx, stub_broker, [model], configs)
+    with pytest.raises(AssertionError):
+        await jobmanager.deploy_model()
+
+    stub_broker.broadcast.assert_called_with(WorkerCommand.DeployModel, model.to_dict())
+    assert jobmanager.models_deployed is False
+
+
+@pytest.mark.asyncio
+async def test_deploy_single_model_multi_conf(mocker, stub_broker, internal_conf):
+    ctx = AppContext(None, None, internal_conf)
+    model = Model(
+        name='testmodel',
+        dimensions=3,
+        precision=Precision.Float32,
+        distribution=RandomDistribution.Uniform,
+        state_shape=2,
+        opt_globals=None,
+        functions=[])
+
+    configs = [{'test': 'deploy_single_model_multi_conf'}, {'test': 'deploy_single_model_multi_conf'}]
+
+    stub_broker.queue_ids = ['queue1', 'queue2']
+
+    stub_broker.get_all_results = build_async_mock_results({'queue1': ['model_deployed'], 'queue2': ['model_deployed']})
 
     jobmanager = JobManager(ctx, stub_broker, [model], configs)
     await jobmanager.deploy_model()
 
-    stub_broker.broadcast.assert_called_with(
-        WorkerCommand.DeployModel, model.to_dict())
+    stub_broker.broadcast.assert_called_with(WorkerCommand.DeployModel, model.to_dict())
     assert jobmanager.models_deployed is True
 
 
 @pytest.mark.asyncio
-async def test_deploy_multi_model_single_conf(mocker, stub_broker):
-    ctx = AppContext(None, None, None)
-    model = Model(name='testmodel1',
-                  dimensions=3,
-                  precision=Precision.Float32,
-                  distribution=RandomDistribution.Uniform,
-                  opt_globals=None,
-                  functions=[])
+async def test_deploy_multi_model_single_conf(mocker, stub_broker, internal_conf):
+    ctx = AppContext(None, None, internal_conf)
+    model = Model(
+        name='testmodel1',
+        dimensions=3,
+        precision=Precision.Float32,
+        distribution=RandomDistribution.Uniform,
+        state_shape=2,
+        opt_globals=None,
+        functions=[])
 
-    model2 = Model(name='testmodel2',
-                   dimensions=3,
-                   precision=Precision.Float32,
-                   distribution=RandomDistribution.Uniform,
-                   opt_globals=None,
-                   functions=[])
+    model2 = Model(
+        name='testmodel2',
+        dimensions=3,
+        precision=Precision.Float32,
+        distribution=RandomDistribution.Uniform,
+        state_shape=2,
+        opt_globals=None,
+        functions=[])
 
     configs = [{'test': 'deploy_single_model_multi_conf'}]
 
     stub_broker.queue_ids = ['queue1', 'queue2']
-    stub_broker.get_all_results = build_async_mock_results(
-        {'queue1': ['model_deployed'], 'queue2': ['model_deployed']})
+    stub_broker.get_all_results = build_async_mock_results({'queue1': ['model_deployed'], 'queue2': ['model_deployed']})
 
     jobmanager = JobManager(ctx, stub_broker, [model, model2], configs)
     await jobmanager.deploy_model()
 
     stub_broker.send_to_queue.assert_has_calls([
         call('queue1', WorkerCommand.DeployModel, model.to_dict()),
-        call('queue2', WorkerCommand.DeployModel, model2.to_dict())])
+        call('queue2', WorkerCommand.DeployModel, model2.to_dict())
+    ])
     assert jobmanager.models_deployed is True
 
 
 @pytest.mark.asyncio
-async def test_deploy_multi_model_multi_conf(mocker, stub_broker):
-    ctx = AppContext(None, None, None)
-    model = Model(name='testmodel1',
-                  dimensions=3,
-                  precision=Precision.Float32,
-                  distribution=RandomDistribution.Uniform,
-                  opt_globals=None,
-                  functions=[])
+async def test_deploy_multi_model_multi_conf(mocker, stub_broker, internal_conf):
+    ctx = AppContext(None, None, internal_conf)
+    model = Model(
+        name='testmodel1',
+        dimensions=3,
+        precision=Precision.Float32,
+        distribution=RandomDistribution.Uniform,
+        state_shape=2,
+        opt_globals=None,
+        functions=[])
 
-    model2 = Model(name='testmodel2',
-                   dimensions=3,
-                   precision=Precision.Float32,
-                   distribution=RandomDistribution.Uniform,
-                   opt_globals=None,
-                   functions=[])
+    model2 = Model(
+        name='testmodel2',
+        dimensions=3,
+        precision=Precision.Float32,
+        distribution=RandomDistribution.Uniform,
+        state_shape=2,
+        opt_globals=None,
+        functions=[])
 
-    configs = [{'test': 'deploy_single_model_multi_conf'},
-               {'test2': 'deploy_single_model_multi_conf_2'}]
+    configs = [{'test': 'deploy_single_model_multi_conf'}, {'test2': 'deploy_single_model_multi_conf_2'}]
 
     stub_broker.queue_ids = ['queue1', 'queue2']
-    stub_broker.get_all_results = build_async_mock_results(
-        {'queue1': ['model_deployed'], 'queue2': ['model_deployed']})
+    stub_broker.get_all_results = build_async_mock_results({'queue1': ['model_deployed'], 'queue2': ['model_deployed']})
 
     jobmanager = JobManager(ctx, stub_broker, [model, model2], configs)
     await jobmanager.deploy_model()
 
     stub_broker.send_to_queue.assert_has_calls([
         call('queue1', WorkerCommand.DeployModel, model.to_dict()),
-        call('queue2', WorkerCommand.DeployModel, model2.to_dict())])
+        call('queue2', WorkerCommand.DeployModel, model2.to_dict())
+    ])
     assert jobmanager.models_deployed is True
 
 
 @pytest.mark.asyncio
-async def test_job_single_model_single_conf(stub_broker, mocker):
-    ctx = AppContext(None, None, None)
-    models = [Model(name='testmodel',
-                    dimensions=3,
-                    precision=Precision.Float32,
-                    distribution=RandomDistribution.Uniform,
-                    opt_globals=None,
-                    functions=[])]
+async def test_job_single_model_single_conf(stub_broker, mocker, internal_conf):
+    ctx = AppContext(None, None, internal_conf)
+    models = [
+        Model(
+            name='testmodel',
+            dimensions=3,
+            precision=Precision.Float32,
+            distribution=RandomDistribution.Uniform,
+            state_shape=2,
+            opt_globals=None,
+            functions=[])
+    ]
 
     configs = [{'test': 'deploy_single_model_multi_conf'}]
     stub_broker.queue_ids = ['queue1']
@@ -263,20 +283,26 @@ async def test_job_single_model_single_conf(stub_broker, mocker):
 
 
 @pytest.mark.asyncio
-async def test_job_multi_model_single_conf(stub_broker, mocker):
-    ctx = AppContext(None, None, None)
-    models = [Model(name='testmodel1',
-                    dimensions=3,
-                    precision=Precision.Float32,
-                    distribution=RandomDistribution.Uniform,
-                    opt_globals=None,
-                    functions=[]),
-              Model(name='testmodel2',
-                    dimensions=3,
-                    precision=Precision.Float32,
-                    distribution=RandomDistribution.Uniform,
-                    opt_globals=None,
-                    functions=[])]
+async def test_job_multi_model_single_conf(stub_broker, mocker, internal_conf):
+    ctx = AppContext(None, None, internal_conf)
+    models = [
+        Model(
+            name='testmodel1',
+            dimensions=3,
+            precision=Precision.Float32,
+            distribution=RandomDistribution.Uniform,
+            state_shape=2,
+            opt_globals=None,
+            functions=[]),
+        Model(
+            name='testmodel2',
+            dimensions=3,
+            precision=Precision.Float32,
+            distribution=RandomDistribution.Uniform,
+            state_shape=2,
+            opt_globals=None,
+            functions=[])
+    ]
 
     configs = [{'test': 'deploy_single_model_multi_conf'}]
 
@@ -301,17 +327,20 @@ async def test_job_multi_model_single_conf(stub_broker, mocker):
 
 
 @pytest.mark.asyncio
-async def test_job_single_model_multi_conf(stub_broker, mocker):
-    ctx = AppContext(None, None, None)
-    models = [Model(name='testmodel1',
-                    dimensions=3,
-                    precision=Precision.Float32,
-                    distribution=RandomDistribution.Uniform,
-                    opt_globals=None,
-                    functions=[])]
+async def test_job_single_model_multi_conf(stub_broker, mocker, internal_conf):
+    ctx = AppContext(None, None, internal_conf)
+    models = [
+        Model(
+            name='testmodel1',
+            dimensions=3,
+            precision=Precision.Float32,
+            distribution=RandomDistribution.Uniform,
+            state_shape=2,
+            opt_globals=None,
+            functions=[])
+    ]
 
-    configs = [{'test': 'deploy_multi_model_multi_conf'},
-               {'test2': 'deploy_multi_model_multi_conf'}]
+    configs = [{'test': 'deploy_multi_model_multi_conf'}, {'test2': 'deploy_multi_model_multi_conf'}]
 
     stub_broker.queue_ids = ['queue1', 'queue2']
 
@@ -334,23 +363,28 @@ async def test_job_single_model_multi_conf(stub_broker, mocker):
 
 
 @pytest.mark.asyncio
-async def test_job_multi_model_multi_conf(stub_broker, mocker):
-    ctx = AppContext(None, None, None)
-    models = [Model(name='testmodel1',
-                    dimensions=3,
-                    precision=Precision.Float32,
-                    distribution=RandomDistribution.Uniform,
-                    opt_globals=None,
-                    functions=[]),
-              Model(name='testmodel2',
-                    dimensions=3,
-                    precision=Precision.Float32,
-                    distribution=RandomDistribution.Uniform,
-                    opt_globals=None,
-                    functions=[])]
+async def test_job_multi_model_multi_conf(stub_broker, mocker, internal_conf):
+    ctx = AppContext(None, None, internal_conf)
+    models = [
+        Model(
+            name='testmodel1',
+            dimensions=3,
+            precision=Precision.Float32,
+            distribution=RandomDistribution.Uniform,
+            state_shape=2,
+            opt_globals=None,
+            functions=[]),
+        Model(
+            name='testmodel2',
+            dimensions=3,
+            precision=Precision.Float32,
+            distribution=RandomDistribution.Uniform,
+            state_shape=2,
+            opt_globals=None,
+            functions=[])
+    ]
 
-    configs = [{'test': 'deploy_multi_model_multi_conf'},
-               {'test2': 'deploy_multi_model_multi_conf'}]
+    configs = [{'test': 'deploy_multi_model_multi_conf'}, {'test2': 'deploy_multi_model_multi_conf'}]
 
     stub_broker.queue_ids = ['queue1', 'queue2']
 
@@ -361,8 +395,6 @@ async def test_job_multi_model_multi_conf(stub_broker, mocker):
     assert stub_broker.send_to_queue.call_count == 2
 
     jobs = stub_broker.send_to_queue.call_args_list
-    print(jobs[0])
-    print('0,0', jobs[0][0])
     assert jobs[0][0][0] == 'queue1'
     assert jobs[0][0][1] == WorkerCommand.RunOptimization
     assert jobs[0][0][2]['params'] == configs[0]
@@ -374,59 +406,65 @@ async def test_job_multi_model_multi_conf(stub_broker, mocker):
     assert jobs[1][0][2]['model'] == 'testmodel2'
 
 
-def test_get_execution_type_multimulti():
+def test_get_execution_type_multimulti(internal_conf):
+    ctx = AppContext(None, None, internal_conf)
     with pytest.raises(AssertionError):
         confs = ['conf/1', 'conf/2', 'conf/3']
         models = ['model/1', 'model/2']
-        JobManager(None, None, models, confs)
+        JobManager(ctx, None, models, confs)
 
     with pytest.raises(AssertionError):
         confs = ['conf/1', 'conf/2']
         models = ['model/1', 'model/2', 'model/3']
-        JobManager(None, None, models, confs)
+        JobManager(ctx, None, models, confs)
 
     confs = ['conf/1', 'conf/2']
     models = ['model/1', 'model/2']
-    exec_type = JobManager(None, None, models, confs).execution_type
+    exec_type = JobManager(ctx, None, models, confs).execution_type
 
     assert exec_type is ExecutionType.MultiModelMultiConf
 
 
-def test_get_execution_type_singlemulti():
+def test_get_execution_type_singlemulti(internal_conf):
+    ctx = AppContext(None, None, internal_conf)
     confs = ['conf/1', 'conf/2']
     models = ['model/1']
-    exec_type = JobManager(None, None, models, confs).execution_type
+    exec_type = JobManager(ctx, None, models, confs).execution_type
 
     assert exec_type is ExecutionType.SingleModelMultiConf
 
 
-def test_get_execution_type_singlesingle():
+def test_get_execution_type_singlesingle(internal_conf):
+    ctx = AppContext(None, None, internal_conf)
     confs = ['conf/1']
     models = ['model/1']
-    exec_type = JobManager(None, None, models, confs).execution_type
+    exec_type = JobManager(ctx, None, models, confs).execution_type
 
     assert exec_type is ExecutionType.SingleModelSingleConf
 
 
-def test_get_execution_type_multisingle():
+def test_get_execution_type_multisingle(internal_conf):
+    ctx = AppContext(None, None, internal_conf)
     confs = ['conf/1']
     models = ['model/1', 'model/2']
-    exec_type = JobManager(None, None, models, confs).execution_type
+    exec_type = JobManager(ctx, None, models, confs).execution_type
 
     assert exec_type is ExecutionType.MultiModelSingleConf
 
 
-def test_get_execution_type_nomodel():
+def test_get_execution_type_nomodel(internal_conf):
+    ctx = AppContext(None, None, internal_conf)
     confs = ['conf/1']
     models = []
 
     with pytest.raises(AssertionError):
-        JobManager(None, None, models, confs)
+        JobManager(ctx, None, models, confs)
 
 
-def test_get_execution_type_noconf():
+def test_get_execution_type_noconf(internal_conf):
+    ctx = AppContext(None, None, internal_conf)
     confs = []
     models = ['model/1']
 
     with pytest.raises(AssertionError):
-        JobManager(None, None, models, confs)
+        JobManager(ctx, None, models, confs)

@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 
 from context import Runner, ExecutionType, get_configs
 
@@ -15,11 +16,13 @@ try:
         ctx = {}
         ctx['internal_conf'] = internal_conf
 
-        runner = Runner(['examples/langermann/langermann_opt.py'], ['examples/langermann/langermann_opt.conf'], ctx)
+        runner = Runner(['examples/ackley/ackley_opt.py'], ['examples/ackley/ackley.conf'], ctx)
 
         runner.run()
         if len(runner.failures) > 0:
             raise Exception('Runner had failures: %s' % runner.failures)
+
+        assert runner.best_value == pytest.approx(0, abs=0.2)
 
 except Exception:
     pass
