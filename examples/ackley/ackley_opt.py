@@ -5,8 +5,8 @@ Description:
 Dimensions: d
 
 The Ackley function is widely used for testing optimization algorithms.
-In its two-dimensional form, as shown in the plot above, it is characterized by a nearly flat outer region,
-and a large hole at the centre. The function poses a risk for optimization algorithms, particularly
+In its two-dimensional form, as shown in the plot [at the link above], it is characterized by a nearly flat outer
+region, and a large hole at the centre. The function poses a risk for optimization algorithms, particularly
 hillclimbing algorithms, to be trapped in one of its many local minima.
 
 Recommended variable values are: a = 20, b = 0.2 and c = 2pi.
@@ -21,17 +21,21 @@ f(x*) = 0, at x* = (0, ..., 0)
 
 References:
 
-Adorio, E. P., & Diliman, U. P. MVF - Multivariate Test Functions Library in C for Unconstrained Global Optimization (2005). Retrieved June 2013, from http://http://www.geocities.ws/eadorio/mvf.pdf.
+Adorio, E. P., & Diliman, U. P. MVF - Multivariate Test Functions Library in C for Unconstrained Global Optimization
+(2005). Retrieved June 2013, from http://http://www.geocities.ws/eadorio/mvf.pdf.
 
-Molga, M., & Smutnicki, C. Test functions for optimization needs (2005). Retrieved June 2013, from http://www.zsd.ict.pwr.wroc.pl/files/docs/functions.pdf.
+Molga, M., & Smutnicki, C. Test functions for optimization needs (2005).
+Retrieved June 2013, from http://www.zsd.ict.pwr.wroc.pl/files/docs/functions.pdf.
 
-Back, T. (1996). Evolutionary algorithms in theory and practice: evolution strategies, evolutionary programming, genetic algorithms. Oxford University Press on Demand.
-Global Optimization Test Functions Index. Retrieved June 2013, from http://infinity77.net/global_optimization/test_functions.html#test-functions-index.
+Back, T. (1996). Evolutionary algorithms in theory and practice: evolution strategies, evolutionary programming,
+genetic algorithms. Oxford University Press on Demand. Global Optimization Test Functions Index. Retrieved June
+2013, from http://infinity77.net/global_optimization/test_functions.html#test-functions-index.
 """
 
 import math
 
 from csaopt.model import RandomDistribution, Precision
+from csaopt.utils import clamp
 from typing import MutableSequence, Sequence, Any, Tuple
 from math import pi
 
@@ -66,17 +70,17 @@ def empty_state() -> Tuple:
 
 
 def cool(initial_temp: float, old_temp: float, step: int) -> float:
-    return initial_temp * math.pow(0.95, step)
+    return initial_temp * math.pow(0.97, step)
 
 
 def acceptance_func(e_old: float, e_new: float, temp: float, rnd: float) -> float:
-    x = clamp(-88.7227, -(e_new - e_old) / temp, 88.7227)  # prevent math.exp from overflowing
+    # prevent math.exp from under or overflowing, we can anyway constrain 0 < e^x <= (e^0 == 1)
+    x = clamp(-80, (e_old - e_new) / temp, 0.1)
     return math.exp(x) > rnd
 
 
 def initialize(state: MutableSequence, randoms: Sequence[float]) -> None:
-    for i in range(len(randoms)):
-        state[i] = randoms[i]
+    generate_next(state, state, randoms, 0)  # just delegate to generate_next
     return
 
 
@@ -93,10 +97,13 @@ def evaluate(state: Sequence) -> float:
 
     t2 = math.exp(t2_sum / d)
 
-    return t1 - t2 + a + math.exp(1)
+    return t1 - t2 + a + 2.71828182846
+    # arg1 = -0.2 * math.sqrt(0.5 * (state[0]**2 + state[1]**2))
+    # arg2 = 0.5 * (math.cos(2. * pi * state[0]) + math.cos(2. * pi * state[1]))
+    # return -20. * math.exp(arg1) - math.exp(arg2) + 20. + 2.71828182846
 
 
-def generate_next(state: Sequence, new_state: MutableSequence, randoms: Sequence[float]) -> Any:
+def generate_next(state: Sequence, new_state: MutableSequence, randoms: Sequence[float], step) -> Any:
     for i in range(len(state)):
-        new_state[i] = clamp(-32.768, state[i] + 0.3 * randoms[i], 32.768)
+        new_state[i] = clamp(-32.768, 8 * randoms[i], 32.768)
     return

@@ -60,6 +60,7 @@ def get_configs(conf_path: str) -> Optional[ConfigTree]:
 
 
 def get_free_tcp_port() -> Optional[int]:
+    """Get a free tcp port from the OS"""
     try:
         tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         tcp.bind(('', 0))
@@ -69,3 +70,7 @@ def get_free_tcp_port() -> Optional[int]:
     except:
         log.exception('Exception in get_free_tcp_port()')
         return None
+
+
+def clamp(min_val, val, max_val) -> float:
+    return max(min_val, min(max_val, val))

@@ -1,9 +1,9 @@
 import math
 
 from csaopt.model import RandomDistribution, Precision
+from csaopt.utils import clamp
 from typing import MutableSequence, Sequence, Any, Tuple
 from math import pi
-
 
 # -- Globals
 
@@ -13,8 +13,8 @@ A = ((3, 5), (5, 2), (2, 1), (1, 4), (7, 9))
 
 # -- Globals
 
-
 # Configuration
+
 
 def distribution() -> RandomDistribution:
     return RandomDistribution.Normal
@@ -39,8 +39,10 @@ def cool(initial_temp: float, old_temp: float, step: int) -> float:
     return initial_temp * math.pow(0.95, step)
 
 
-def acceptance_func(e1: float, e2: float, temp: float) -> bool:
-    return math.exp(-(e2 - e1) / (temp + 1e-9)) > 0.5
+def acceptance_func(e_old: float, e_new: float, temp: float, rnd: float) -> float:
+    # prevent math.exp from under or overflowing, we can anyway constrain 0 < e^x <= (e^0 == 1)
+    x = clamp(-80, (e_old - e_new) / temp, 0.1)
+    return math.exp(x) > rnd
 
 
 def initialize(state: MutableSequence, randoms: Sequence[float]) -> None:
@@ -66,7 +68,7 @@ def evaluate(state: Sequence) -> float:
     return -result
 
 
-def generate_next(state: Sequence, new_state: MutableSequence, randoms: Sequence[float]) -> Any:
+def generate_next(state: Sequence, new_state: MutableSequence, randoms: Sequence[float], step) -> Any:
     for i in range(len(state)):
-        new_state[i] = state[i] + randoms[i]
+        new_state[i] = clamp(0, state[i] + 0.3 * randoms[i], 10)
     return
