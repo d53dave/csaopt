@@ -1,6 +1,6 @@
 # CSAOpt - Cloud based, GPU accelerated Simulated Annealing Framework
 
-[![Build Status](https://travis-ci.org/d53dave/csaopt.svg?branch=master)](https://travis-ci.org/d53dave/csaopt)
+[![Build Status](https://travis-ci.com/d53dave/csaopt.svg?branch=master)](https://travis-ci.com/d53dave/csaopt)
 [![Coverage Status](https://coveralls.io/repos/github/d53dave/csaopt/badge.svg?branch=master)](https://coveralls.io/github/d53dave/csaopt?branch=master) 
 [![Maintainability](https://api.codeclimate.com/v1/badges/1f269d5aed4a650403ec/maintainability)](https://codeclimate.com/github/d53dave/csaopt/maintainability)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fd53dave%2Fcsaopt.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fd53dave%2Fcsaopt?ref=badge_shield) [![Join Slack](https://img.shields.io/badge/style-join-green.svg?longCache=true&style=flat&label=slack&logo=slack)](https://join.slack.com/t/csaopt/shared_invite/enQtMzY2ODUyOTEwNDU1LTM3NDIxN2FiZGUzMjQ2YzdhZWIxY2JhZGVkODdlM2RhZWVhMmNjMjEwYTY3YzE2YTc4YmFlYTYyYjRkYzRmNGE)

@@ -9,6 +9,7 @@ matrix:
 
 env:
   global:
+    - BOTO_CONFIG=/dev/null # Fix "No module named google_compute_engine" on travis-ci
     - CC_TEST_REPORTER_ID=57a2d5465c28a2de7f343c5c859259b2d5b473a6fee413edd1f4503dc911fe38
 
 before_script:
