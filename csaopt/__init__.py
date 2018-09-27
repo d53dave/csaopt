@@ -142,7 +142,7 @@ class Runner:
         self.console_printer.print_magenta(ef.bold + 'Welcome to CSAOpt v{}\n\n'.format(__version__))
 
     def _get_instance_manager(self, context, conf, internal_conf) -> InstanceManager:
-        if conf['remote.local_docker'] is True:
+        if conf.get('remote.local_docker', False):
             return Local(conf, internal_conf)
 
         cloud_platform = conf['remote.platform']
@@ -193,7 +193,7 @@ class Runner:
         # Get cloud config, create instance manager
         self.remote_config = configs[0]
 
-        if self.remote_config['remote.local_docker'] is True:
+        if self.remote_config.get('remote.local_docker', False):
             start_msg = 'Starting local instances with docker'
         else:
             start_msg = 'Starting instances on {}'.format(self.remote_config['remote.platform'].upper())
