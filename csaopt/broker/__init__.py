@@ -52,7 +52,7 @@ class _MsgPackEncoder(dramatiq.Encoder):
     """Encoder for communication to Dramatiq broker and workers
 
     This provides `msgpack`-based encoding and decoding to Dramatiq and is used in conjunction with `msgpack-numpy` to
-    allow direct passing of `numpy.ndarray`s
+    allow direct passing of `numpy.array`s
     """
 
     # MessageData = typing.Dict[str, typing.Any]

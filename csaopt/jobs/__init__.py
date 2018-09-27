@@ -13,6 +13,9 @@ Failure = Optional[Tuple[Optional[Type[BaseException]], Optional[BaseException],
 
 
 class ExecutionType(Enum):
+    """
+
+    """
     MultiModelMultiConf = 'MultiModelMultiConf'
     SingleModelMultiConf = 'SingleModelMultiConf'
     SingleModelSingleConf = 'SingleModelSingleConf'
@@ -25,7 +28,7 @@ class Job():
         self.message_id: str = ''
         self.queue_id: str = ''
         self.model: Model = model
-        self.results: List[np.ndarray] = []
+        self.results: List[np.array] = []
         self.values: List[float] = []
         self.completed: bool = False
         self.failure: Failure = None
@@ -39,10 +42,10 @@ class Job():
     def to_dict(self):
         return {'id': self.id, 'params': self.params, 'model': self.model.name}
 
-    def get_best_results(self) -> Tuple[float, np.ndarray]:
-        values_ndarr = np.asarray(self.values)
-        ind = np.unravel_index(np.argmin(values_ndarr, axis=None), values_ndarr.shape)
-        val_min = values_ndarr[ind]
+    def get_best_results(self) -> Tuple[float, np.array]:
+        values_arr = np.asarray(self.values)
+        ind = np.unravel_index(np.argmin(values_arr, axis=None), values_arr.shape)
+        val_min = values_arr[ind]
         best_res = self.results[ind]
         return val_min, best_res
 
@@ -58,11 +61,11 @@ class Job():
             else:
                 for idx, result in enumerate(self.results):
                     self._write_file('{}_values_{}.{}'.format(self.id, idx, suffix), path, binary,
-                                     np.ndarr([self.values[idx]]))
+                                     np.asarray([self.values[idx]]))
                     self._write_file('{}_states_{}.{}'.format(self.id, idx, suffix), path, binary, self.values[idx])
         else:
             raise AttributeError('Cannot write to {}: not a directory.'.format(path))
 
-    def _write_file(self, name: str, path: str, binary: bool, ndarr: np.ndarray) -> None:
+    def _write_file(self, name: str, path: str, binary: bool, arr: np.array) -> None:
         output_file = os.path.join(path, name)
-        ndarr.tofile(output_file, sep=('' if binary else ','))
+        arr.tofile(output_file, sep=('' if binary else ','))
