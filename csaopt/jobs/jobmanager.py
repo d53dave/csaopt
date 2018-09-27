@@ -30,10 +30,23 @@ class JobManager():
         self.configs = configs
         self.execution_type: ExecutionType = self._get_execution_type(models, configs)
         self.jobs: List[Job] = []
+        self.worker_join_retry_delay = ctx.internal_config['remote.worker_join_retry_delay']
         if self.broker is not None:
             self.queue_models_deployed: Dict[str, bool] = {queue_id: False for queue_id in self.broker.queue_ids}
 
-    async def wait_for_worker_join(self, is_retry=False):
+    async def wait_for_worker_join(self, is_retry=False) -> List[str]:
+        """Send ping to each worker and wait for response.
+
+        Workers are expected to join immediately as the jobmanager will be called only after the
+        instances are initialized. To be somewhat relaxed regarding the startup of instances,
+        the ping operation will be retried once after a retry delay specified in the internal configuration.
+
+        Args:
+            is_retry: Indicate if call is a retry (i.e. this method calls itself recursively when retrying)
+
+        Returns:
+            A list of worker IDs of the joined workers
+        """
         joined_workers = []
         for queue_id in self.broker.queue_ids:
             try:
@@ -47,13 +60,23 @@ class JobManager():
                     raise e
 
                 log.warn('Retrying to contact broker in order to ping workers')
-                await asyncio.sleep(3)
+                await asyncio.sleep(self.worker_join_retry_delay)
                 await self.wait_for_worker_join(is_retry=True)
 
         self.broker.clear_queue_messages()
         return joined_workers
 
+    # TODO: Fix type links in comments
     def _get_execution_type(self, models: List[Model], configs: List[ConfigTree]) -> ExecutionType:
+        """Determine the execution type of a given optimization run based on the number of models and configurations
+
+        Args:
+            models: A list of Models
+            configs: A list of Configurations
+
+        Returns:
+            The ExecutionType of this optimization run
+        """
         len_models = len(models)
         len_configs = len(configs)
 
@@ -79,9 +102,16 @@ class JobManager():
                 len_models, len_configs))
 
     async def deploy_model(self) -> None:
-        if self.execution_type is ExecutionType.SingleModelSingleConf:
-            self.broker.broadcast(WorkerCommand.DeployModel, self.models[0].to_dict())
-        elif self.execution_type is ExecutionType.SingleModelMultiConf:
+        """Deploy model to workers.
+
+        This method will deploy models depending on the execution type (i.e. the configuration).
+        - If the execution type is `SingleModelSingleConf` or `SingleModelMultiConf`, the model is broadcast to all
+          workers
+        - Otherwise, each worker will receive the deployment information for one model in the same order they were
+          passed to CSAOpt.
+        """
+        if self.execution_type is ExecutionType.SingleModelSingleConf or \
+           self.execution_type is ExecutionType.SingleModelMultiConf:
             self.broker.broadcast(WorkerCommand.DeployModel, self.models[0].to_dict())
         else:
             for n, queue_id in enumerate(self.broker.queue_ids):
@@ -138,12 +168,15 @@ class JobManager():
         return self.jobs
 
     async def wait_for_results(self) -> None:
+        """
+
+        """
         if not self.models_deployed:
             raise AssertionError('wait_for_results called but no models are deployed')
         if len(self.jobs) == 0:
             raise AssertionError('wait_for_results called but no jobs submitted')
 
-        results = await self.broker.get_all_results(timeout=50.0)
+        results = await self.broker.get_all_results(timeout=150.0)
         for job in self.jobs:
             for queue_id in job.submitted_to:
                 for message in results[queue_id]:
@@ -154,7 +187,15 @@ class JobManager():
                         job.values = message['values']
                         job.results = message['states']
 
-    def scan_for_best_result(self, jobs: List[Job]) -> Tuple[Job, float, np.ndarray]:
+    def scan_for_best_result(self, jobs: List[Job]) -> Tuple[Job, float, np.array]:
+        """Get best performing job and it's results from a list of jobs
+
+        Args:
+            jobs: List of jobs to process
+
+        Returns:
+            A tuple of job, result and state at which the result was evaluated
+        """
         if len(jobs) < 1:
             raise AssertionError('Cannot scan for best result on empty jobs list')
 
