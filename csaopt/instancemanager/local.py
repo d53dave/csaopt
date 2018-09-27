@@ -44,7 +44,7 @@ class Local(InstanceManager[DockerContainerT]):
         self.broker_container_name = 'CSAOpt-Broker-' + run_id
         self.worker_container_name = 'CSAOpt-Worker-' + run_id
         self.broker_port: Optional[int] = get_free_tcp_port()
-        self.debug_on_cpu = conf.get('debug.gpu_simulator')
+        self.debug_on_cpu = conf.get('debug.gpu_simulator', False)
 
     def _provision_instances(self, timeout_ms, count=2, **kwargs) -> Tuple[DockerContainerT, List[DockerContainerT]]:
         self.broker = self.docker_client.containers.run(
@@ -55,17 +55,12 @@ class Local(InstanceManager[DockerContainerT]):
             environment={'ALLOW_EMPTY_PASSWORD': 'yes'},
             name=self.broker_container_name)
 
-        broker_ip = ''
-        # TODO instead of polling the broker IP, assign it on the custom network
-
-        while broker_ip is None or len(broker_ip.strip()) == 0:
-            time.sleep(0.3)
-            self.broker.reload()
-            broker_ip = self.broker.attrs['NetworkSettings']['Networks']['bridge']['IPAddress']
-
         # Sleeping here to give Redis a chance to start up
         time.sleep(3)
-        kwargs['REDIS_HOST'] = broker_ip
+
+        # Being on the same docker network means that it automagically
+        # handles DNS and the broker container name is also its DNS name.
+        kwargs['REDIS_HOST'] = self.broker_container_name
 
         self.worker = self.docker_client.containers.run(
             self.worker_docker_tag,
@@ -132,7 +127,8 @@ class Local(InstanceManager[DockerContainerT]):
             log.debug('Broker logs: \n' + self.broker.logs().decode('utf-8'))
             log.debug('Worker logs: \n' + self.worker.logs().decode('utf-8'))
             self._terminate_instances(timeout_ms=10000)
-            self.docker_network.remove()
         except Exception as e:
             log.warn('An exception occured while killing docker containers: ' + str(e))
+        finally:
+            self.docker_network.remove()
         return False
