@@ -29,7 +29,7 @@ before_script:
   - conda update -q conda
   # Useful for debugging any issues with conda
   - conda info -a
-  - conda env create --name csaopt-travisci
+  - conda env create --name csaopt-travisci -f environment.dev.yml
   - source activate csaopt-travisci
   - |
     if [[ $TRAVIS_OS_NAME == "linux" ]]; then

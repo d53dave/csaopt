@@ -6,7 +6,7 @@ class :class:`instancemanager.InstanceManager` from which actual instance manage
 """
 
 import ipaddress
-import ujson
+import json
 
 from typing import Union, Dict, Any
 
@@ -46,4 +46,4 @@ class Instance():
     def __str__(self):
         return 'Instance[id={}, public_ip={}, broker={}, props={}'.format(self.inst_id, self.public_ip, 'True'
                                                                           if self.is_broker else 'False',
-                                                                          ujson.dumps(self.props))
+                                                                          json.dumps(self.props))

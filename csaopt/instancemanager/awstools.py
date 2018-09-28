@@ -8,7 +8,7 @@ from typing import List, Any, Tuple, Dict
 
 from . import Instance
 from .instancemanager import InstanceManager
-from ..utils import get_own_ip, random_str, random_int
+from ..utils import random_str, random_int
 
 log = logging.getLogger()
 

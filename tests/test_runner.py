@@ -1,10 +1,10 @@
 import pytest
 import numpy as np
 
-from context import Runner, ExecutionType, get_configs
+from context import Runner, ExecutionType, get_configs, docker_available
 
 try:
-    import docker
+    assert docker_available()
 
     class MockContext():
         def __init__(self):

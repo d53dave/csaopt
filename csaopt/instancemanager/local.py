@@ -8,7 +8,7 @@ from typing import Tuple, List, Any, Dict, Union, Type, Optional
 
 from .instancemanager import InstanceManager
 from . import Instance
-from ..utils import get_free_tcp_port, random_str
+from ..utils import get_free_tcp_port, random_str, docker_available
 
 log = logging.getLogger()
 
@@ -18,16 +18,16 @@ def _map_docker_to_instance(container, port=-1, is_broker: bool = False) -> Inst
 
 
 try:
+    assert docker_available()
     import docker
     DockerContainerT = Type[docker.models.containers.Container]
-    docker_available = True
-except ImportError:
+except Exception:
     pass
 
 
 class Local(InstanceManager[DockerContainerT]):
     def __init__(self, conf: ConfigTree, internal_conf: ConfigTree) -> None:
-        if not docker_available:
+        if not docker_available():
             raise AssertionError('Trying to instantiate Local InstanceManager, but docker-py is not available.')
         self.docker_client = docker.from_env()
 

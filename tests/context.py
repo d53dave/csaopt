@@ -7,12 +7,13 @@ from distutils import dir_util
 sys.path.insert(0, os.path.abspath('.'))
 
 from csaopt import Runner, ExecutionType, ConsolePrinter, Context as AppContext
-from csaopt.utils import get_own_ip, get_configs
+from csaopt.utils import get_configs, docker_available
 from csaopt.model import Model, RandomDistribution, Precision
 from csaopt.model_loader.model_loader import ModelLoader, ModelValidator, ValidationError
 from csaopt.jobs.jobmanager import JobManager, Job
 from csaopt.instancemanager.awstools import AWSTools, Instance
 from csaopt.broker import Broker, WorkerCommand
+
 
 def copy_folder_contents(src, dest):
 

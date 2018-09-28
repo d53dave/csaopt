@@ -1,7 +1,7 @@
 """
 This module offers the core CSAOpt modelling component: the :class:`~model.Model` class.
 """
-import ujson
+import json
 
 from enum import Enum
 from typing import Dict, Any
@@ -101,4 +101,4 @@ class Model:
         }
 
     def __repr__(self) -> str:
-        return ujson.dumps(self, indent=4)
+        return json.dumps(self, indent=4)

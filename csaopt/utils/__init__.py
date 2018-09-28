@@ -12,15 +12,17 @@ from pyhocon.config_tree import ConfigTree
 log = logging.getLogger(__name__)
 
 
+def docker_available() -> bool:
+    try:
+        import docker
+        df = docker.from_env().df()
+        return df is not None
+    except Exception:
+        return False
+
+
 def is_pytest_run() -> bool:
     return os.environ.get('UNIT_TESTS') == '1'
-
-
-def get_own_ip() -> str:
-    """
-    Uses api.ipify.org to determine own external ip
-    """
-    return requests.get('https://api.ipify.org/').text
 
 
 def random_int(lower: int, upper: int) -> int:
