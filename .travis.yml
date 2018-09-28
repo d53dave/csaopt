@@ -1,9 +1,12 @@
 language: generic
 
+services:
+  - docker
+
 matrix:
   include:
     - os: linux
-      dist: trusty  # This and sudo: true implicitly adds docker
+      dist: trusty
       sudo: true
     - os: osx
 
