@@ -26,6 +26,6 @@ dependencies:
     - Sphinx==1.8.1
     - coverage==4.5.1
     - coveralls==1.5.1
-    - flake8=3.4.1
+    - flake8==3.4.1
     - docker==3.5.0
     - yapf==0.24.0
