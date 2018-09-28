@@ -22,10 +22,11 @@ try:
     import docker
     DockerContainerT = Type[docker.models.containers.Container]
 except Exception:
+    DockerContainerT = ...
     pass
 
 
-class Local(InstanceManager[DockerContainerT]):
+class Local(InstanceManager[DockerContainerT]):  # type: ignore
     def __init__(self, conf: ConfigTree, internal_conf: ConfigTree) -> None:
         if not docker_available():
             raise AssertionError('Trying to instantiate Local InstanceManager, but docker-py is not available.')
