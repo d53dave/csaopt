@@ -34,10 +34,6 @@ before_script:
   - conda info -a
   - conda env create --name csaopt-travisci -f environment.dev.yml
   - source activate csaopt-travisci
-  - |
-    if [[ $TRAVIS_OS_NAME == "linux" ]]; then
-        pip install docker-py;  # Required to run local runner tests, run only on linux
-    fi
   - ./cc-test-reporter before-build
 
 script: py.test --cov=csaopt -v tests
