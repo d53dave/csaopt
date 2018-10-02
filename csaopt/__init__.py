@@ -26,7 +26,6 @@ from .model import Model
 from .utils import get_configs
 from .instancemanager.instancemanager import InstanceManager
 from .instancemanager.awstools import AWSTools
-from .instancemanager.local import Local
 from .jobs.jobmanager import Job, JobManager, ExecutionType
 from .broker import Broker
 
@@ -142,7 +141,8 @@ class Runner:
         self.console_printer.print_magenta(ef.bold + 'Welcome to CSAOpt v{}\n\n'.format(__version__))
 
     def _get_instance_manager(self, context, conf, internal_conf) -> InstanceManager:
-        if conf.get('remote.local_docker', False):
+        if conf.get('remote.local_docker', False) is True:
+            from .instancemanager.local import Local
             return Local(conf, internal_conf)
 
         cloud_platform = conf['remote.platform']
