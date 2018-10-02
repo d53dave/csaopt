@@ -1,5 +1,6 @@
 import boto3
 import logging
+import time
 
 from string import Template
 from pyhocon import ConfigTree
@@ -15,6 +16,11 @@ log = logging.getLogger()
 
 def _interpolate_userscript_template_vals(script: bytes, **kwargs: str) -> bytes:
     return Template(script.decode('utf-8')).substitute(kwargs).encode()
+
+
+def _has_exit_status(instance) -> bool:
+    instance.reload()
+    return instance.state['Name'] == 'shutting-down' or instance.state['Name'] == 'terminated'
 
 
 class AWSTools(InstanceManager):
@@ -85,9 +91,9 @@ class AWSTools(InstanceManager):
 
         self.provision_args: Dict[str, str] = {
             'broker_image':
-            config.get('remote.broker_image', internal_conf['remote.broker_image']),
+            config.get('remote.aws.broker_ami', internal_conf['remote.aws.broker_ami']),
             'worker_image':
-            config.get('remote.worker_image', internal_conf['remote.worker_image']),
+            config.get('remote.aws.worker_ami', internal_conf['remote.aws.worker_ami']),
             'broker_instance_type':
             config.get('remote.aws.broker_instance_type', internal_conf['remote.aws.broker_instance_type']),
             'worker_instance_type':
@@ -118,7 +124,6 @@ class AWSTools(InstanceManager):
             SecurityGroupIds=[self.security_group_id],
             InstanceType=kwargs['broker_instance_type'])[0]
 
-        # TODO: get internal hostname or IP from broker
         worker_userdata = _interpolate_userscript_template_vals(
             self.user_data_scripts['worker'],
             debug='1' if self.debug_on_cpu else 'off',
@@ -150,14 +155,20 @@ class AWSTools(InstanceManager):
         return Instance(instance.id, instance.public_ip_address, is_broker=is_broker, **kwargs)
 
     def get_running_instances(self) -> Tuple[Instance, List[Instance]]:
-        """Get currently managed instances
+        """Update and get currently managed instances
 
         Returns:
             A tuple of broker, [worker]
         """
-        return self.__map_ec2_instance(
-            instance=self.broker, is_broker=True, port=self.broker_port,
-            password=self.broker_password), [self.__map_ec2_instance(w) for w in self.workers]
+        self.broker.reload()
+        for worker in self.workers:
+            worker.reload()
+
+        broker_instance = self.__map_ec2_instance(
+            instance=self.broker, is_broker=True, port=self.broker_port, password=self.broker_password)
+        worker_instances = [self.__map_ec2_instance(w, queue_id='Worker-' + w.id) for w in self.workers]
+
+        return broker_instance, worker_instances
 
     def _terminate_instances(self, timeout_ms: int) -> None:
         """Terminate all instances managed by AWSTools
@@ -165,16 +176,15 @@ class AWSTools(InstanceManager):
         Args:
             timeout_ms: Timeout, in milliseconds, for the termination
         """
-        instance_ids = [self.broker.id] + \
-            [instance.id for instance in self.workers]
+        instance_ids = [self.broker.id] + [instance.id for instance in self.workers]
         self.ec2_client.terminate_instances(InstanceIds=instance_ids)
 
     def _wait_for_instances(self) -> None:
         """Block until broker and workers are up"""
         self.broker.wait_until_running()
 
-        for instance in self.workers:
-            instance.wait_until_running()
+        for worker in self.workers:
+            worker.wait_until_running()
 
     def _run_start_scripts(self, timeout_ms: int) -> None:
         """Run any required setup procedures after the initial startup of managed instances
@@ -193,15 +203,25 @@ class AWSTools(InstanceManager):
         self.broker, self.workers = self._provision_instances(
             count=self.worker_count, timeout_ms=self.timeout_provision, **self.provision_args)
 
+        log.debug('Provision Instances returned: {}, {}. Waiting for instances now'.format(self.broker, self.workers))
         self._wait_for_instances()
+
+        log.debug('Waiting for instances returned')
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         """On exit, AWSTools terminates the started instances and removes security groups"""
+        log.debug('Entered awstools\' __exit__ method with traceback: {}'.format(traceback))
         self._terminate_instances(self.timeout_provision)
-        for instance in self.workers:
-            instance.wait_until_terminated()
-        self.broker.wait_until_terminated()
+        log.debug('Terminate Instances call returned, waiting for termination')
+
+        all_instances = [self.broker] + self.workers
+        while (any((not _has_exit_status(instance) for instance in all_instances))):
+            log.debug('Waiting for instances to enter "shutting-down" or "terminated" state: {}'.format(
+                [(i.id, i.state) for i in all_instances]))
+            time.sleep(2.0)
+
+        log.debug('Remove Security Group')
         self._remove_sec_group(self.security_group_id)
         return False
 
@@ -232,8 +252,8 @@ class AWSTools(InstanceManager):
         """
         try:
             response = self.ec2_client.create_security_group(GroupName=name, Description='Security Group for CSAOpt')
-
             security_group_id = response['GroupId']
+            log.debug('Created Security Group: ' + security_group_id)
 
             data = self.ec2_client.authorize_security_group_ingress(
                 GroupId=security_group_id,
