@@ -126,7 +126,7 @@ try:
                 log.debug('Worker logs: \n' + self.worker.logs().decode('utf-8'))
                 self._terminate_instances(timeout_ms=10000)
             except Exception as e:
-                log.warn('An exception occured while killing docker containers: ' + str(e))
+                log.warning('An exception occured while killing docker containers: ' + str(e))
             finally:
                 self.docker_network.remove()
             return False

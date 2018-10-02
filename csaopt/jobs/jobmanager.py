@@ -2,7 +2,7 @@ import asyncio
 import logging
 import numpy as np
 
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Any
 from pyhocon import ConfigTree
 
 from . import Job, ExecutionType
@@ -59,7 +59,7 @@ class JobManager():
                     log.exception('Exception occurred while waiting for workers to join')
                     raise e
 
-                log.warn('Retrying to contact broker in order to ping workers')
+                log.warning('Retrying to contact broker in order to ping workers')
                 await asyncio.sleep(self.worker_join_retry_delay)
                 await self.wait_for_worker_join(is_retry=True)
 
@@ -118,14 +118,13 @@ class JobManager():
                 log.debug('Deploying model to queue {} with id {}'.format(n, queue_id))
                 self.broker.send_to_queue(queue_id, WorkerCommand.DeployModel, self.models[n].to_dict())
 
-        results = await self.broker.get_all_results(timeout=10)
-        for queue_id, results in results.items():
+        all_results = await self.broker.get_all_results(timeout=10)
+        for queue_id, results in all_results.items():
             for message in results:
                 if message == 'model_deployed':
                     self.queue_models_deployed[queue_id] = True
                 else:
-                    log.warn('Worker on Queue %s didn\'nt successfully deploy model: "%s"', queue_id, message)
-                    log.warn('Results: ' + repr(results))
+                    log.warning('Worker on Queue %s didn\'nt successfully deploy model: "%s"', queue_id, message)
 
         assert not any((not model_deployed for queue_id, model_deployed in self.queue_models_deployed.items())), \
             'Not all queues reported a deployed model'
@@ -180,7 +179,7 @@ class JobManager():
         for job in self.jobs:
             for queue_id in job.submitted_to:
                 for message in results[queue_id]:
-                    log.warn('Processing message on queue {}, result={}'.format(queue_id, message))
+                    log.warning('Processing message on queue {}, result={}'.format(queue_id, message))
                     if message.get('failure') is not None:
                         job.failure = message.get('failure')
                     else:

@@ -29,7 +29,7 @@ from .instancemanager.awstools import AWSTools
 from .jobs.jobmanager import Job, JobManager, ExecutionType
 from .broker import Broker
 
-logger = logging.getLogger('csaopt.Runner')
+log = logging.getLogger('csaopt.Runner')
 fg.set_rule('csaopt_magenta', Rule(Render.rgb_fg, 199, 51, 147))
 
 
@@ -58,7 +58,7 @@ class ConsolePrinter:
             if columns < max_columns:
                 self.columns = columns
         except:
-            logger.debug('Could not get stty size, it seems there is no console available.')
+            log.debug('Could not get stty size, it seems there is no console available.')
 
     @staticmethod
     def _format_to_width(width: int, txt: str, status: str) -> str:
@@ -184,10 +184,10 @@ class Runner:
         printer.print_with_spinner('Loading Models')
         for idx, model_path in enumerate(self.model_paths):
             configs[idx]['model']['path'] = model_path
-            logger.debug('Loading model {}'.format(model_path))
+            log.debug('Loading model {}'.format(model_path))
             loader = ModelLoader(configs[idx], internal_conf)
             self.models.insert(idx, loader.get_model())
-            logger.debug('Models loaded succesfully.')
+            log.debug('Models loaded succesfully.')
         printer.spinner_success()
 
         # Get cloud config, create instance manager
@@ -205,6 +205,7 @@ class Runner:
             printer.print_with_spinner('Waiting for broker to come online')
 
             broker_instance, workers = instancemanager.get_running_instances()
+            log.debug
 
             queue_ids: List[str] = []
             for worker in workers:
@@ -231,7 +232,7 @@ class Runner:
                 await jobmanager.deploy_model()
             except Exception:
                 msg = 'An exception occured during model deployment.'
-                logger.exception(msg)
+                log.exception(msg)
                 printer.spinner_failure()
                 self.failures.append(msg)
                 return

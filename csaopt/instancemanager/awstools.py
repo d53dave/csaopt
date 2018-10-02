@@ -24,11 +24,10 @@ class AWSTools(InstanceManager):
     `__exit__()`. These two methods as well as :meth:`instancemanager.awstools.AWSTools.get_running_instances` are the
     only methods called by the Runner (i.e. the only public methods).
 
-    This class will use boto3 to (1) create a security group, (2) configure ingress from either the current IP address
-    range, or the whole internet to the broker backend (currently Redis, as used by Dramatiq). It then (3) creates
-    as many worker instances as requested and runs 'user-data' scripts after startup, which is to say, some bash
-    scripts that set up and the required software (Redis, CSAOpt Worker, etc.). After the run AWSTools (4) terminates
-    all managed instances and removes the security group.
+    This class will use boto3 to (1) create a security group, (2) configure ingress to the broker backend (currently
+    Redis, as used by Dramatiq). It then (3) creates as many worker instances as requested and runs 'user-data' scripts
+    after startup, which is to say, bash scripts that set up and the required software (Redis, CSAOpt Worker, etc.).
+    After the run AWSTools (4) terminates all managed instances and removes the security group.
 
     Note:
         If the AWS credentials are not provided in the config file, boto3 will look into
@@ -152,7 +151,7 @@ class AWSTools(InstanceManager):
 
     def get_running_instances(self) -> Tuple[Instance, List[Instance]]:
         """Get currently managed instances
-        
+
         Returns:
             A tuple of broker, [worker]
         """
@@ -220,7 +219,7 @@ class AWSTools(InstanceManager):
             except ClientError as e:
                 log.error('Could not remove security group: {}'.format(e))
         else:
-            log.warn('Cannot remove security group, because none was created. Skipping...')
+            log.warning('Cannot remove security group, because none was created. Skipping...')
 
     def _create_sec_group(self, name: str) -> str:
         """Creates an AWS security group and assigns ingress permissions from the current network

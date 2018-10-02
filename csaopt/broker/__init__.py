@@ -87,7 +87,7 @@ class Broker():
                  queue_ids: List[str] = []) -> None:
 
         if len(queue_ids) < 1:
-            log.warn('Constructing {} without queue_ids'.format(Broker))
+            log.warning('Constructing {} without queue_ids'.format(Broker))
 
         if is_pytest_run() and _use_stub_broker():
             broker = StubBroker
@@ -201,7 +201,7 @@ class Broker():
         for queue_id in self.queue_ids:
             for message in self.queue_messages[queue_id]:
                 messages_to_process[message.message_id] = message
-        log.warn('Messages to process is [{}]'.format(messages_to_process))
+        log.warning('Messages to process is [{}]'.format(messages_to_process))
 
         message_ids_processed: List[str] = []
         results: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
