@@ -36,10 +36,10 @@ def empty_state() -> Tuple:
 
 
 def cool(initial_temp: float, old_temp: float, step: int) -> float:
-    return initial_temp * math.pow(0.95, step)
+    return initial_temp * math.pow(0.9, step)
 
 
-def acceptance_func(e_old: float, e_new: float, temp: float, rnd: float) -> float:
+def acceptance_func(e_old: float, e_new: float, temp: float, rnd: float) -> bool:
     # prevent math.exp from under or overflowing, we can anyway constrain 0 < e^x <= (e^0 == 1)
     x = clamp(-80, (e_old - e_new) / temp, 0.1)
     return math.exp(x) > rnd
@@ -68,7 +68,7 @@ def evaluate(state: Sequence) -> float:
     return -result
 
 
-def generate_next(state: Sequence, new_state: MutableSequence, randoms: Sequence[float], step) -> Any:
+def generate_next(state: Sequence, new_state: MutableSequence, randoms: Sequence[float], step: int) -> Any:
     for i in range(len(state)):
         new_state[i] = clamp(0, state[i] + 0.3 * randoms[i], 10)
     return
