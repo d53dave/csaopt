@@ -30,11 +30,12 @@ class JobManager():
         self.configs = configs
         self.execution_type: ExecutionType = self._get_execution_type(models, configs)
         self.jobs: List[Job] = []
-        self.worker_join_retry_delay = ctx.internal_config['remote.worker_join_retry_delay']
+        self.worker_join_retry_delay = ctx.internal_config['broker.worker_join_retry_delay']
+        self.worker_join_retry_count = ctx.internal_config['broker.worker_join_retry_count']
         if self.broker is not None:
             self.queue_models_deployed: Dict[str, bool] = {queue_id: False for queue_id in self.broker.queue_ids}
 
-    async def wait_for_worker_join(self, is_retry=False) -> List[str]:
+    async def wait_for_worker_join(self, retry_count=0) -> List[str]:
         """Send ping to each worker and wait for response.
 
         Workers are expected to join immediately as the jobmanager will be called only after the
@@ -55,13 +56,13 @@ class JobManager():
                 else:
                     raise AssertionError('Worker {} failed to join'.format(queue_id))
             except Exception as e:
-                if is_retry:
+                if retry_count >= self.worker_join_retry_count:
                     log.exception('Exception occurred while waiting for workers to join')
                     raise e
 
                 log.warning('Retrying to contact broker in order to ping workers')
                 await asyncio.sleep(self.worker_join_retry_delay)
-                await self.wait_for_worker_join(is_retry=True)
+                await self.wait_for_worker_join(retry_count + 1)
 
         self.broker.clear_queue_messages()
         return joined_workers
@@ -124,7 +125,7 @@ class JobManager():
                 if message == 'model_deployed':
                     self.queue_models_deployed[queue_id] = True
                 else:
-                    log.warning('Worker on Queue %s didn\'nt successfully deploy model: "%s"', queue_id, message)
+                    log.warning('Worker on Queue %s didn\'t successfully deploy model: "%s"', queue_id, message)
 
         assert not any((not model_deployed for queue_id, model_deployed in self.queue_models_deployed.items())), \
             'Not all queues reported a deployed model'
@@ -176,10 +177,11 @@ class JobManager():
             raise AssertionError('wait_for_results called but no jobs submitted')
 
         results = await self.broker.get_all_results(timeout=150.0)
+        log.debug('Received results: {}'.format(results))
         for job in self.jobs:
             for queue_id in job.submitted_to:
                 for message in results[queue_id]:
-                    log.warning('Processing message on queue {}, result={}'.format(queue_id, message))
+                    log.debug('Processing message on queue {}, result={}'.format(queue_id, message))
                     if message.get('failure') is not None:
                         job.failure = message.get('failure')
                     else:
