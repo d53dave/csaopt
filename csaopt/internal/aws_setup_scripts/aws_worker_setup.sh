@@ -32,10 +32,10 @@ sudo pkill -SIGHUP dockerd
 
 # CUDA
 sudo add-apt-repository ppa:graphics-drivers/ppa
-sudo apt update && sudo apt install nvidia-367
+sudo apt update && sudo apt install nvidia-410 cuda-drivers
 
 # Test NVidia Driver
-docker run --runtime=nvidia --rm nvidia/cuda nvidia-smi
+# docker run --runtime=nvidia --rm nvidia/cuda nvidia-smi
 
-docker pull d53dave/csaopt-worker:latest
+docker pull d53dave/csaopt-worker:0.1.1
 
