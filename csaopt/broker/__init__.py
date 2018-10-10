@@ -49,13 +49,6 @@ class WorkerCommand(Enum):
 
 
 class _MsgPackEncoder(dramatiq.Encoder):
-    """Encoder for communication to Dramatiq broker and workers
-
-    This provides `msgpack`-based encoding and decoding to Dramatiq and is used in conjunction with `msgpack-numpy` to
-    allow direct passing of `numpy.array`s
-    """
-
-    # MessageData = typing.Dict[str, typing.Any]
     def encode(self, data: dramatiq.encoder.MessageData) -> bytes:
         return msgpack.packb(data, use_bin_type=True)
 
@@ -83,8 +76,12 @@ class Broker():
         queue_ids: Queue ids of available workers
     """
 
-    def __init__(self, host: str = 'localhost', port: int = 6379, password: str = None,
-                 queue_ids: List[str] = []) -> None:
+    def __init__(self,
+                 host: str = 'localhost',
+                 port: int = 6379,
+                 password: str = None,
+                 queue_ids: List[str] = [],
+                 **kwargs: str) -> None:
 
         if len(queue_ids) < 1:
             log.warning('Constructing {} without queue_ids'.format(Broker))
@@ -93,7 +90,7 @@ class Broker():
             broker = StubBroker
             broker.emit_after('process_boot')
         else:
-            self.dramatiq_broker = broker = RedisBroker(host=host, port=port, password=password)
+            self.dramatiq_broker = broker = RedisBroker(host=host, port=port, password=password, **kwargs)
 
             msgpack_encoder = _MsgPackEncoder()
             self.result_backend = backend = RedisBackend(encoder=msgpack_encoder, client=self.dramatiq_broker.client)
@@ -243,6 +240,7 @@ class Broker():
         Returns:
             Nothing
         """
+        log.debug('Broadcasting cmd [{}] and payload [{}] to queue ids: {}', command, payload, self.queue_ids)
         for queue_id in self.queue_ids:
             self.send_to_queue(queue_id, command, payload)
 

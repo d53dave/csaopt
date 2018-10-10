@@ -23,7 +23,7 @@ from async_timeout import timeout
 
 from .model_loader.model_loader import ModelLoader
 from .model import Model
-from .utils import get_configs
+from .utils import get_configs, internet_connectivity_available
 from .instancemanager.instancemanager import InstanceManager
 from .instancemanager.awstools import AWSTools
 from .jobs.jobmanager import Job, JobManager, ExecutionType
@@ -75,8 +75,11 @@ class ConsolePrinter:
         no_c = ''.join(c for c in no_ansi if unicodedata.category(c)[0] != 'C')
         return no_c
 
-    def print(self, txt: str) -> None:
+    def _advance_spinner(self):
         self.spinner_idx = (self.spinner_idx + 1) % len(self.spinner)
+
+    def print(self, txt: str) -> None:
+        self._advance_spinner()
         sys.stdout.write(txt + rs.all)
         sys.stdout.flush()
         self.last_line = txt
@@ -145,6 +148,9 @@ class Runner:
             from .instancemanager.local import Local
             return Local(conf, internal_conf)
 
+        if not internet_connectivity_available():
+            raise AssertionError('Configured remote/cloud execution but internet connectivity unavailable.')
+
         cloud_platform = conf['remote.platform']
         if cloud_platform == 'aws':
             return AWSTools(conf, internal_conf)
@@ -154,7 +160,6 @@ class Runner:
             raise AttributeError('Cloud platform ' + cloud_platform + ' unrecognized.')
 
     def duplicate_remote_configs(self, configs):
-        # TODO this needs to be clearly stated in documentation
         for config in configs:
             if config.get('remote', None) is not None:
                 remote_conf = config['remote']
@@ -201,28 +206,48 @@ class Runner:
         printer.print_with_spinner(start_msg)
 
         with self._get_instance_manager(ctx, self.remote_config, internal_conf) as instancemanager:
+            log.debug('Entered instancemanager block')
             printer.spinner_success()
             printer.print_with_spinner('Waiting for broker to come online')
 
             broker_instance, workers = instancemanager.get_running_instances()
-            log.debug
+            log.debug('Got running instances: {}, {}'.format(broker_instance, workers))
+
+            await asyncio.sleep(5.0)
 
             queue_ids: List[str] = []
             for worker in workers:
                 if 'queue_id' in worker.props:
                     queue_ids.append(worker.props['queue_id'])
+            log.debug('Got queue IDs (a.k.a. active workers): {}'.format(queue_ids))
 
             assert len(queue_ids) > 0, 'There should be at least one worker running'
+
+            redis_connect_timeout = configs[0].get('broker.connect_timeout',
+                                                   internal_conf['broker.defaults.connect_timeout'])
             async with timeout(30) as async_timeout:
-                broker: Broker = Broker(
-                    host=str(broker_instance.public_ip), port=broker_instance.port, queue_ids=queue_ids)
-                printer.spinner_success()
+                while not async_timeout.expired:
+                    try:
+                        await asyncio.sleep(5)
+                        broker: Broker = Broker(
+                            host=str(broker_instance.public_ip),
+                            port=broker_instance.port,
+                            queue_ids=queue_ids,
+                            socket_connect_timeout=redis_connect_timeout,
+                            password=broker_instance.props.get('password', None))
+                        printer.spinner_success()
+                        break
+                    except ConnectionError:
+                        pass
 
             if async_timeout.expired:
+                log.debug('Timeout while waiting for Broker')
                 printer.spinner_failure()
                 raise TimeoutError('Timed out waiting for broker to come online')
 
             jobmanager = JobManager(ctx, broker, self.models, configs)
+
+            await asyncio.sleep(5)  # wait for redis to start
 
             for worker_id in (await jobmanager.wait_for_worker_join()):
                 printer.println('Worker {} joined'.format(worker_id))
