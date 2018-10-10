@@ -166,7 +166,7 @@ class AWSTools(InstanceManager):
 
         broker_instance = self.__map_ec2_instance(
             instance=self.broker, is_broker=True, port=self.broker_port, password=self.broker_password)
-        worker_instances = [self.__map_ec2_instance(w, queue_id='Worker-' + w.id) for w in self.workers]
+        worker_instances = [self.__map_ec2_instance(w, queue_id=w.id) for w in self.workers]
 
         return broker_instance, worker_instances
 
@@ -257,16 +257,34 @@ class AWSTools(InstanceManager):
 
             data = self.ec2_client.authorize_security_group_ingress(
                 GroupId=security_group_id,
-                IpPermissions=[{
-                    'IpProtocol': 'tcp',
-                    'FromPort': self.broker_port,
-                    'ToPort': self.broker_port,
-                    'IpRanges': [{
-                        'CidrIp': '0.0.0.0/0'
+                IpPermissions=[
+                    {
+                        'IpProtocol': 'tcp',
+                        'FromPort': self.broker_port,
+                        'ToPort': self.broker_port,
+                        'IpRanges': [{
+                            'CidrIp': '0.0.0.0/0'
+                        }]
+                    },
+                    {  # Allow communication within the sec group
+                        'IpProtocol': '-1',
+                        'UserIdGroupPairs': [{
+                            'GroupId': security_group_id
+                        }]
+                    }
+                ])
+            log.debug('Authorized Security Group Ingress with result: {}'.format(data))
+
+            data = self.ec2_client.authorize_security_group_egress(
+                GroupId=security_group_id,
+                IpPermissions=[{  # Allow communication within the sec group
+                    'IpProtocol': '-1',
+                    'UserIdGroupPairs': [{
+                        'GroupId': security_group_id
                     }]
                 }])
 
-            log.debug('Authorized Security Group Ingress with result: {}'.format(data))
+            log.debug('Authorized Security Group Egress with result: {}'.format(data))
 
             return security_group_id
         except ClientError as e:
