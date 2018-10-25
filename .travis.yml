@@ -10,6 +10,10 @@ matrix:
       sudo: true
     - os: osx
 
+addons:
+  sonarcloud:
+    organization: "d53dave-github"
+
 env:
   global:
     - BOTO_CONFIG=/dev/null # Fix "No module named google_compute_engine" on travis-ci
@@ -39,6 +43,7 @@ before_script:
 script: py.test --cov=csaopt -v tests
 
 after_script:
+  - sonar-scanner
   - coverage xml
   - |
     if [[ "$TRAVIS_PULL_REQUEST" == "false" && $TRAVIS_OS_NAME == "linux" ]]; then ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT; 
