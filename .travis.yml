@@ -43,7 +43,6 @@ before_script:
 script: py.test --cov=csaopt -v tests
 
 after_script:
-  - sonar-scanner
   - coverage xml
   - |
     if [[ "$TRAVIS_PULL_REQUEST" == "false" && $TRAVIS_OS_NAME == "linux" ]]; then ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT; 
@@ -52,5 +51,5 @@ after_script:
 after_success:
   - |
     if [[ $TRAVIS_OS_NAME == "linux" ]]; then
-        coveralls;
+        coveralls; sonar-scanner;
     fi
