@@ -25,6 +25,8 @@ def conf():
                     access_key = AKXBREA5T5XLSQWEXB4KQ
                     worker_count = 2
                     timeout = 500
+                    broker_ami = ami-dca37ea5 # moto will complain about 'inexisting' AMIs otherwise
+                    worker_ami = ami-dca37ea5
                 }
             }
         }
