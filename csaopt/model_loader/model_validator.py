@@ -17,9 +17,6 @@ class ModelValidator:
 
     # TODO: review these
     required_param_counts = {
-        'distribution': 0,
-        'precision': 0,
-        'dimensions': 0,
         'initialize': 2,
         'generate_next': 4,
         'cool': 3,
@@ -136,8 +133,9 @@ class ModelValidator:
             :class:`~model_loader.ValidationError` if validation fails, otherwise `None`
         """
         if len(inspect.signature(fun).parameters) != num_params:
-            return ValidationError('Signature of `{}` has an incorrect number of parameters (expected {}, found {})'
-                                   .format(name, num_params, len(inspect.signature(fun).parameters)))
+            return ValidationError(
+                'Signature of `{}` has an incorrect number of parameters (expected {}, found {})'.format(
+                    name, num_params, len(inspect.signature(fun).parameters)))
         return None
 
     def _validate_return_statement(self, name: str, fun: Callable) -> Optional[ValidationError]:

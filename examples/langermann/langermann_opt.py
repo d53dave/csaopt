@@ -1,6 +1,5 @@
 import math
 
-from csaopt.model import RandomDistribution, Precision
 from csaopt.utils import clamp
 from typing import MutableSequence, Sequence, Any, Tuple
 from math import pi
@@ -14,18 +13,6 @@ A = ((3, 5), (5, 2), (2, 1), (1, 4), (7, 9))
 # -- Globals
 
 # Configuration
-
-
-def distribution() -> RandomDistribution:
-    return RandomDistribution.Normal
-
-
-def precision() -> Precision:
-    return Precision.Float32
-
-
-def dimensions() -> int:
-    return 2
 
 
 def empty_state() -> Tuple:

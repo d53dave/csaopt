@@ -21,9 +21,6 @@ class RandomDistribution(Enum):
 
 class RequiredFunctions(Enum):
     """Enum for required functions that a model has to provide"""
-    Distribution = 'distribution'
-    Precision = 'precision'
-    Dimensions = 'dimensions'
     Initialize = 'initialize'
     GenerateNext = 'generate_next'
     Cool = 'cool'

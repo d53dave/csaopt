@@ -3,7 +3,7 @@ import imp
 
 from pyhocon import ConfigFactory
 
-from context import ModelLoader, ModelValidator, ValidationError
+from context import ModelLoader, ModelValidator, ValidationError, Precision, RandomDistribution
 
 
 @pytest.fixture
@@ -19,6 +19,7 @@ def conf():
                 name = testopt
                 path = examples/langermann/langermann_opt.py
                 skip_typecheck = True
+                dimensions = 2
             }
         }
         """)
@@ -31,7 +32,7 @@ def test_build_model(conf, internal_conf, mocker):
     model = loader.get_model()
 
     assert model is not None
-    assert len(model.functions) == 9
+    assert len(model.functions) == 6
     validator.validate_functions.assert_called_once()
 
 
@@ -66,8 +67,7 @@ def test_loading_py_model_failed(conf, internal_conf, mocker):
     with pytest.raises(AssertionError):
         ModelLoader(conf, internal_conf, validator)
 
-    imp.load_source.assert_called_once_with(
-        'testopt', 'examples/langermann/langermann_opt.py')
+    imp.load_source.assert_called_once_with('testopt', 'examples/langermann/langermann_opt.py')
 
 
 def test_globals(conf, internal_conf, mocker):
@@ -84,3 +84,17 @@ def test_globals(conf, internal_conf, mocker):
     assert 'A = ((3, 5), (5, 2), (2, 1), (1, 4), (7, 9))' in model.globals
 
     assert 'from math import pi' not in model.globals
+
+
+def test_model_params(conf, internal_conf, mocker):
+    validator = ModelValidator()
+    validator.validate_functions = mocker.stub(name='validate_functions_stub')
+    validator.validate_typing = mocker.stub(name='validate_typing_stub')
+
+    loader = ModelLoader(conf, internal_conf, validator)
+    validator.validate_functions.assert_called_once()
+
+    model = loader.get_model()
+    assert Precision.Float32 == model.precision
+    assert RandomDistribution.Uniform == model.distribution
+    assert 2 == model.dimensions
