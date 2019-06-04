@@ -11,6 +11,7 @@ import re
 import os
 import time
 import pathlib
+import better_exceptions
 
 from pyhocon import ConfigTree
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -29,8 +30,16 @@ from .instancemanager.awstools import AWSTools
 from .jobs.jobmanager import Job, JobManager, ExecutionType
 from .broker import Broker
 
+better_exceptions.hook()
+
+logging.basicConfig(level='DEBUG')
 log = logging.getLogger('csaopt.Runner')
 fg.set_rule('csaopt_magenta', Rule(Render.rgb_fg, 199, 51, 147))
+
+log.setLevel(logging.DEBUG)
+
+logging.getLogger('botocore').setLevel(logging.INFO)
+logging.getLogger('apscheduler.executors.default').setLevel(logging.INFO)
 
 
 class ConsolePrinter:
@@ -57,8 +66,8 @@ class ConsolePrinter:
             _, columns = subprocess.check_output(['stty', 'size']).split()
             if columns < max_columns:
                 self.columns = columns
-        except:
-            log.debug('Could not get stty size, it seems there is no console available.')
+        except Exception:
+            log.exception('Could not get stty size, it seems there is no console available.')
 
     @staticmethod
     def _format_to_width(width: int, txt: str, status: str) -> str:
@@ -304,6 +313,12 @@ class Runner:
                     job.write_files(path, binary)
                 elif save_to_file == 'best':
                     job.write_files(path, binary, only_best=True)
+
+            if save_to_file != 'none':
+                printer.println('Files have successfully been written.')
+
+            printer.println('Waiting for instances to shutdown. This might take a long time. If you configured ' +
+                            'files to be written to disk, they are now ready for your perusal.')
 
     def run(self) -> None:
         """
