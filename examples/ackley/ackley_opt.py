@@ -50,18 +50,6 @@ c = 2 * pi
 # Configuration
 
 
-def distribution() -> RandomDistribution:
-    return RandomDistribution.Normal
-
-
-def precision() -> Precision:
-    return Precision.Float32
-
-
-def dimensions() -> int:
-    return 2
-
-
 def empty_state() -> Tuple:
     return (0.0, 0.0)
 
