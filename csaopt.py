@@ -30,14 +30,16 @@ def cli(ctx):
 @click.option(
     '--model',
     type=click.Path(exists=True, resolve_path=True),
+    multiple=True,
     help='Folder containing the model that should be used for optimization.')
 @click.option(
     '--conf',
     type=click.Path(exists=True, resolve_path=True),
+    multiple=True,
     help='Path to the CSAOpt config. If not provided, \'conf/csaopt.conf\' will be used')
 @click.pass_context
 def run_opt(ctx, model, conf):
-    runner = Runner([model], [conf], ctx.obj)
+    runner = Runner(list(model), list(conf), ctx.obj)
     runner.run()
     runner.console_printer.print_magenta('Bye.\n')
 
