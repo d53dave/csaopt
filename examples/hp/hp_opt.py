@@ -47,14 +47,12 @@ def evaluate(state: Sequence) -> float:
                 d = float(state[h1][1] - state[h2][1])**2 +\
                     float(state[h1][2] - state[h2][2])**2  # euclidean distance
                 if d < 1.05:  # if the distance is one, they are in contact
-                    # print('Contact found', h1, h2, d)
-                    # contacts.append((h1, h2))
                     num_contacts += 1
 
     return num_contacts * eps
 
 
-def rigid_rotation(chain: Chain2d, idx: int = -1, clckwise: bool = False):
+def rigid_rotation(chain: Chain2d, idx: int = 0, clckwise: bool = False):
     rot = 1 if clckwise else -1
 
     # Mutate the rest of the chain by the chosen rotation, starting from idx
@@ -62,8 +60,12 @@ def rigid_rotation(chain: Chain2d, idx: int = -1, clckwise: bool = False):
         chain[i][3] = (chain[i][3] + rot) % 4
 
 
-def crankshaft(chain, idx):
-    pass
+def crankshaft(chain: Chain2d, idx: int):
+    tmp1 = chain[idx][3]
+    tmp2 = chain[idx + 1][3]
+    if tmp1 != tmp2:
+        chain[idx][3] = tmp2
+        chain[idx + 1][3] = tmp1
 
 
 def three_bead_flip(chain, idx):
