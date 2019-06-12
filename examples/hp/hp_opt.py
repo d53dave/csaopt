@@ -6,9 +6,9 @@ from csaopt.utils import clamp
 
 # -- Globals
 
-seq = 'PHHPPHPHPPHPHPHPPHPPHHHHH'
+hp_str = 'PHHPPHPHPPHPHPHPPHPPHHHHH'
 eps = -1
-h_idxs = []
+h_idxs = [idx for idx, mm in enumerate(hp_str) if mm == 'H']
 
 # -- Globals
 
@@ -16,7 +16,7 @@ Chain2d = List[Tuple[int, int, int, int]]
 
 
 def empty_state() -> Collection:
-    return [(0, 0, 0, 0)] * len(seq)
+    return [(0, 0, 0, 0)] * len(hp_str)
 
 
 def cool(initial_temp: float, old_temp: float, step: int) -> float:
@@ -44,18 +44,22 @@ def evaluate(state: Sequence) -> float:
             h1 = h_idxs[i]
             if (h2 - h1) >= 3:
                 # if the distance between the two hydrophobic monomers is greater than 3, they could be in contact
-                d = float(state[h1][1] - state[h2][1])**2 + float(state[h1][2] - state[h2][2])**2  # euclidean distance
+                d = float(state[h1][1] - state[h2][1])**2 +\
+                    float(state[h1][2] - state[h2][2])**2  # euclidean distance
                 if d < 1.05:  # if the distance is one, they are in contact
                     # print('Contact found', h1, h2, d)
                     # contacts.append((h1, h2))
                     num_contacts += 1
 
-    energy = num_contacts * eps
-    return energy
+    return num_contacts * eps
 
 
-def rigid_rotation(chain, idx, clckwise):
-    pass
+def rigid_rotation(chain: Chain2d, idx: int = -1, clckwise: bool = False):
+    rot = 1 if clckwise else -1
+
+    # Mutate the rest of the chain by the chosen rotation, starting from idx
+    for i in range(idx, len(chain)):
+        chain[i][3] = (chain[i][3] + rot) % 4
 
 
 def crankshaft(chain, idx):
