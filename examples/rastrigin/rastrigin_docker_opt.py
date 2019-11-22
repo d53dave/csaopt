@@ -30,7 +30,7 @@ from math import pi
 
 # -- Globals
 
-max_steps = 3200
+max_steps = 320
 
 
 @cuda.jit(device=True)
@@ -67,7 +67,7 @@ def empty_state() -> Tuple:
 
 
 def cool(initial_temp: float, old_temp: float, step: int) -> float:
-    return (1 - 0.03) * old_temp
+    return (1 - 0.3) * old_temp
 
 
 def acceptance_func(e_old: float, e_new: float, temp: float, rnd: float) -> float:
