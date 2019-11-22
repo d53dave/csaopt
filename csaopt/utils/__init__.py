@@ -69,10 +69,21 @@ def get_free_tcp_port() -> Optional[int]:
         addr, port = tcp.getsockname()
         tcp.close()
         return port
-    except:
+    except Exception:
         log.exception('Exception in get_free_tcp_port()')
         return None
 
 
 def clamp(min_val, val, max_val) -> float:
     return max(min_val, min(max_val, val))
+
+
+class FakeCuda():
+    def __init__(self):
+        pass
+
+    def jit(*args, **kwargs):
+        def f(fun):
+            return fun
+
+        return f
