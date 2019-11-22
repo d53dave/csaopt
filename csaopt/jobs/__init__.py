@@ -62,7 +62,7 @@ class Job():
                 for idx, result in enumerate(self.results):
                     self._write_file('{}_values_{}.{}'.format(self.id, idx, suffix), path, binary,
                                      np.asarray([self.values[idx]]))
-                    self._write_file('{}_states_{}.{}'.format(self.id, idx, suffix), path, binary, self.values[idx])
+                    self._write_file('{}_states_{}.{}'.format(self.id, idx, suffix), path, binary, self.results[idx])
         else:
             raise AttributeError('Cannot write to {}: not a directory.'.format(path))
 
