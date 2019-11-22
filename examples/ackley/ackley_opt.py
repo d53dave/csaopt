@@ -34,8 +34,8 @@ genetic algorithms. Oxford University Press on Demand. Global Optimization Test 
 
 import math
 
-from csaopt.model import RandomDistribution, Precision
 from csaopt.utils import clamp
+from csaopt.utils import FakeCuda as cuda
 from typing import MutableSequence, Sequence, Any, Tuple
 from math import pi
 
@@ -44,6 +44,21 @@ from math import pi
 a = 20
 b = 0.2
 c = 2 * pi
+upper_bound = 32.768
+lower_bound = -32.768
+max_steps = 1000
+
+
+@cuda.jit(device=True, inline=True)
+def copy_state(b, a):
+    for i in range(len(b)):
+        a[i] = b[i]
+
+
+@cuda.jit(device=True)
+def scale(val, old_min, old_max, new_min, new_max):
+    return (val - old_min) / (old_max - old_min) * (new_max - new_min) + new_min
+
 
 # -- Globals
 
@@ -58,40 +73,47 @@ def empty_state() -> Tuple:
 
 
 def cool(initial_temp: float, old_temp: float, step: int) -> float:
-    return initial_temp * math.pow(0.97, step)
+    return (1 - 0.14) * old_temp
 
 
 def acceptance_func(e_old: float, e_new: float, temp: float, rnd: float) -> float:
     # prevent math.exp from under or overflowing, we can anyway constrain 0 < e^x <= (e^0 == 1)
-    x = clamp(-80, (e_old - e_new) / temp, 0.1)
-    return math.exp(x) > rnd
+    x = clamp(-80, -(e_new - e_old) / temp, 0.1)
+    return math.exp(x) >= rnd
 
 
 def initialize(state: MutableSequence, randoms: Sequence[float]) -> None:
-    generate_next(state, state, randoms, 0)  # just delegate to generate_next
+    for i in range(len(state)):
+        state[i] = scale(randoms[i], 0.0, 1.0, lower_bound, upper_bound)
     return
 
 
 def evaluate(state: Sequence) -> float:
-    d = 2
+    d = len(state)
     t1_sum = 0.0
     t2_sum = 0.0
-
     for i in range(d):
         t1_sum += state[i] * state[i]
         t2_sum += math.cos(c * state[i])
-
     t1 = -a * math.exp(-b * math.sqrt(t1_sum / d))
-
     t2 = math.exp(t2_sum / d)
-
     return t1 - t2 + a + 2.71828182846
-    # arg1 = -0.2 * math.sqrt(0.5 * (state[0]**2 + state[1]**2))
-    # arg2 = 0.5 * (math.cos(2. * pi * state[0]) + math.cos(2. * pi * state[1]))
-    # return -20. * math.exp(arg1) - math.exp(arg2) + 20. + 2.71828182846
 
 
 def generate_next(state: Sequence, new_state: MutableSequence, randoms: Sequence[float], step) -> Any:
-    for i in range(len(state)):
-        new_state[i] = clamp(-32.768, 8 * randoms[i], 32.768)
-    return
+    # i = int(randoms[0] * len(state)) % len(state)
+    # delta = (randoms[dim] - 0.5) * 10 * (1 - float(step) / max_steps)
+    d = len(state)
+    for dim in range(d):
+        if ((randoms[dim] * 100000) % 1 < 0.33):
+            # skip with probability 0.66
+            continue
+
+        delta = scale(randoms[dim], 0.0, 1.0, lower_bound, upper_bound) * (1 - float(step) / (max_steps * 1.1))
+        new_val = state[dim] + delta
+
+        if new_val > 10 or new_val < -5:
+            new_val = clamp(-5, state[dim] + delta, 10)
+
+        new_state[dim] = new_val
+        return  # empty return required by validator
