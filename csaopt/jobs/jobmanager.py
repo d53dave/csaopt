@@ -60,7 +60,7 @@ class JobManager():
                     log.exception('Exception occurred while waiting for workers to join')
                     raise e
 
-                log.warning('Retrying to contact broker in order to ping workers')
+                log.debug('Retrying to contact broker in order to ping workers')
                 await asyncio.sleep(self.worker_join_retry_delay)
                 await self.wait_for_worker_join(retry_count + 1)
 

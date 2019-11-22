@@ -198,7 +198,7 @@ class Broker():
         for queue_id in self.queue_ids:
             for message in self.queue_messages[queue_id]:
                 messages_to_process[message.message_id] = message
-        log.warning('Messages to process is [{}]'.format(messages_to_process))
+        log.debug('Messages to process is [{}]'.format(messages_to_process))
 
         message_ids_processed: List[str] = []
         results: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
