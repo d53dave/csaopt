@@ -85,9 +85,19 @@ class AWSTools(InstanceManager):
         self.timeout_startup = config.get('remote.aws.timeout_startup', internal_conf['remote.aws.timeout_startup'])
 
         self.broker_port = internal_conf.get('broker.defaults.remote_port')
-        self.broker_password = random_str(32)
+        self.broker_password = config.get('remote.aws.instances.broker_password', None)
+        if self.broker_password is None:
+            self.broker_password = random_str(32)
 
         self.debug_on_cpu = config.get('debug.gpu_simulator', '')
+        self.terminate_on_exit = config.get('remote.terminate_on_exit', False)
+
+        self.use_existing_instances = False
+        existing_instances = config.get('remote.aws.instances', None)
+
+        if existing_instances is not None:
+            self.use_existing_instances = True
+            self.existing_instances = existing_instances
 
         self.provision_args: Dict[str, str] = {
             'broker_image':
@@ -103,6 +113,12 @@ class AWSTools(InstanceManager):
         data_base = internal_conf['remote.aws.userdata_rel_path']
         with open(data_base + '-broker.sh', 'rb') as broker_data, open(data_base + '-worker.sh', 'rb') as worker_data:
             self.user_data_scripts: Dict[str, bytes] = {'broker': broker_data.read(), 'worker': worker_data.read()}
+
+    def _get_from_ids(self, broker_id: str, worker_ids: List[str]) -> Tuple[Any, Any]:
+        broker = self.ec2_resource.Instance(broker_id)
+        workers = map(lambda worker_id: self.ec2_resource.Instance(worker_id), worker_ids)
+
+        return broker, list(workers)
 
     def _provision_instances(self, timeout_ms: int, count: int = 2, **kwargs: str) -> Tuple[Any, Any]:
         """Start and configure instances
@@ -198,12 +214,18 @@ class AWSTools(InstanceManager):
         """On enter, AWSTools prepares the AWS security group and spins up the required intances
 
         """
-        self.security_group_id = self._create_sec_group(self.security_group_prefix + random_str(10))
+        if not self.use_existing_instances:
+            self.security_group_id = self._create_sec_group(self.security_group_prefix + random_str(10))
 
-        self.broker, self.workers = self._provision_instances(
-            count=self.worker_count, timeout_ms=self.timeout_provision, **self.provision_args)
+            self.broker, self.workers = self._provision_instances(
+                count=self.worker_count, timeout_ms=self.timeout_provision, **self.provision_args)
 
-        log.debug('Provision Instances returned: {}, {}. Waiting for instances now'.format(self.broker, self.workers))
+            log.debug('Provision Instances returned: {}, {}. Waiting for instances now'.format(
+                self.broker, self.workers))
+        else:
+            self.security_group_id = self.existing_instances['security_group']
+            self.broker, self.workers = self._get_from_ids(self.existing_instances['broker'],
+                                                           self.existing_instances['workers'])
         self._wait_for_instances()
 
         log.debug('Waiting for instances returned')
@@ -212,6 +234,9 @@ class AWSTools(InstanceManager):
     def __exit__(self, exc_type, exc_value, traceback):
         """On exit, AWSTools terminates the started instances and removes security groups"""
         log.debug('Entered awstools\' __exit__ method with traceback: {}'.format(traceback))
+        if not self.terminate_on_exit:
+            return False
+
         self._terminate_instances(self.timeout_provision)
         log.debug('Terminate Instances call returned, waiting for termination')
 

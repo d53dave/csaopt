@@ -32,14 +32,14 @@ from .broker import Broker
 
 better_exceptions.hook()
 
-logging.basicConfig(level='DEBUG')
+# logging.basicConfig(level='INFO')
 log = logging.getLogger('csaopt.Runner')
 fg.set_rule('csaopt_magenta', Rule(Render.rgb_fg, 199, 51, 147))
 
-log.setLevel(logging.DEBUG)
+# log.setLevel(logging.DEBUG)
 
-logging.getLogger('botocore').setLevel(logging.INFO)
-logging.getLogger('apscheduler.executors.default').setLevel(logging.INFO)
+logging.getLogger('botocore').setLevel(logging.WARN)
+logging.getLogger('apscheduler.executors.default').setLevel(logging.WARN)
 
 
 class ConsolePrinter:
@@ -64,7 +64,7 @@ class ConsolePrinter:
 
         try:
             _, columns = subprocess.check_output(['stty', 'size']).split()
-            if columns < max_columns:
+            if int(columns) < max_columns:
                 self.columns = columns
         except Exception:
             log.exception('Could not get stty size, it seems there is no console available.')
@@ -213,6 +213,7 @@ class Runner:
             start_msg = 'Starting instances on {}'.format(self.remote_config['remote.platform'].upper())
 
         printer.print_with_spinner(start_msg)
+        await asyncio.sleep(0.8)
 
         with self._get_instance_manager(ctx, self.remote_config, internal_conf) as instancemanager:
             log.debug('Entered instancemanager block')
@@ -221,6 +222,10 @@ class Runner:
 
             broker_instance, workers = instancemanager.get_running_instances()
             log.debug('Got running instances: {}, {}'.format(broker_instance, workers))
+            if hasattr(instancemanager, 'broker_password'):
+                # password is none for local deploys
+                printer.println('Broker password (in case you intend to re-use instances): ' +
+                                instancemanager.broker_password)
 
             await asyncio.sleep(5.0)
 
@@ -258,9 +263,11 @@ class Runner:
 
             await asyncio.sleep(5)  # wait for redis to start
 
+            printer.print_with_spinner("Waiting for workers to join")
             for worker_id in (await jobmanager.wait_for_worker_join()):
                 printer.println('Worker {} joined'.format(worker_id))
 
+            printer.spinner_success()
             printer.print_with_spinner('Deploying model')
             try:
                 await jobmanager.deploy_model()
