@@ -4,15 +4,28 @@ from typing import List, Tuple, MutableSequence, Sequence, Collection, Any
 
 from csaopt.utils import clamp
 
+Monomer = Tuple[int, int, int, int]
+Chain2d = List[Monomer]
+
 # -- Globals
 
 hp_str = 'PHHPPHPHPPHPHPHPPHPPHHHHH'
 eps = -1
 h_idxs = [idx for idx, mm in enumerate(hp_str) if mm == 'H']
 
-# -- Globals
 
-Chain2d = List[Tuple[int, int, int, int]]
+# @numba.cuda.jit(inline=True, device=True)
+def is_valid_conformation(chain: Chain2d) -> bool:
+    row_max = len(chain)
+    for i in range(row_max):
+        for j in range(i + 1, row_max):
+            d = (chain[i][1] - chain[j][1])**2 + (chain[i][2] - chain[j][2])**2
+            if d < 1.0:
+                return False
+    return True
+
+
+# -- Globals
 
 
 def empty_state() -> Collection:
@@ -31,7 +44,6 @@ def acceptance_func(e_old: float, e_new: float, temp: float, rnd: float) -> floa
 
 def initialize(state: MutableSequence, randoms: Sequence[float]) -> None:
     generate_next(state, state, randoms, 0)  # just delegate to generate_next
-    return
 
 
 def evaluate(state: Sequence) -> float:
@@ -57,33 +69,44 @@ def rigid_rotation(chain: Chain2d, idx: int = 0, clckwise: bool = False):
 
     # Mutate the rest of the chain by the chosen rotation, starting from idx
     for i in range(idx, len(chain)):
-        chain[i][3] = (chain[i][3] + rot) % 4
+        chain[i][3] = (chain[i][3] + rot) % 4  # type: ignore
 
 
 def crankshaft(chain: Chain2d, idx: int):
     tmp1 = chain[idx][3]
+    tmp2 = chain[idx + 2][3]
+    if tmp1 != tmp2:
+        chain[idx][3] = tmp2  # type: ignore
+        chain[idx + 2][3] = tmp1  # type: ignore
+
+
+def three_bead_flip(chain: Chain2d, idx: int):
+    tmp1 = chain[idx][3]
     tmp2 = chain[idx + 1][3]
     if tmp1 != tmp2:
-        chain[idx][3] = tmp2
-        chain[idx + 1][3] = tmp1
+        chain[idx][3] = tmp2  # type: ignore
+        chain[idx + 1][3] = tmp1  # type: ignore
 
 
-def three_bead_flip(chain, idx):
-    pass
+def generate_next(state: Sequence, new_state: Chain2d, randoms: Sequence[float], step) -> Any:
+    len_randoms = len(randoms)
+    n = 0
+    while n <= 100:
+        idx = int(math.floor((len(state) - 1.0001) * randoms[n % len_randoms]))
+        for i in range(len(state)):
+            new_state[i] = state[i]
 
+        if randoms[1] < 0.3 or idx > (len(state) - 3):
+            # if the vec index is on the end, do an end flip
+            clckwise = randoms[2] < 0.5
+            rigid_rotation(new_state, idx, clckwise=clckwise)
+        elif randoms[1] < 0.66:
+            # do a three-bead flip, i.e. switch two adjacent {n,e,w,s} directions
+            crankshaft(new_state, idx)
+        else:
+            three_bead_flip(new_state, idx)
 
-def generate_next(state: Sequence, new_state: MutableSequence, randoms: Sequence[float], step) -> Any:
-    idx = int(math.floor((len(state) - 1.0001) * randoms[0]))
+        if is_valid_conformation(new_state):
+            break
 
-    for i in range(len(state)):
-        new_state[i] = state[i]
-
-    if randoms[1] < 0.3 or idx > (len(state) - 3):
-        # if the vec index is on the end, do an end flip
-        clckwise = randoms[2] < 0.5
-        rigid_rotation(new_state, idx, clckwise=clckwise)
-    elif randoms[1] < 0.66:
-        # do a three-bead flip, i.e. switch two adjacent {n,e,w,s} directions
-        crankshaft(new_state, idx)
-    else:
-        three_bead_flip(new_state, idx)
+        n += 1
